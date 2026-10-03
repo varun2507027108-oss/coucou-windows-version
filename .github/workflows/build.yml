@@ -38,5 +38,13 @@ jobs:
       - name: Typecheck the island
         run: npx tsc --noEmit
 
+      # tauri-build validates `bundle.resources` while the crate compiles, and
+      # fails the build script when a listed path is missing. coucou-hook.exe is
+      # one of them, and `cargo test` never produces it: cargo builds a test
+      # binary, not the exe. `npm run pack` gets this for free from the prebuild
+      # script, which is why it only ever broke here and never on a machine.
+      - name: Build the agent relay
+        run: cargo build --release -p coucou-hook
+
       - name: Rust tests
         run: cargo test --workspace
