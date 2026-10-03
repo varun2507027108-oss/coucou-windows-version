@@ -118,18 +118,28 @@ body {
   pointer-events: none;
   z-index: 0;
   opacity: 0;
-  --glow-col: color-mix(in srgb, var(--amb-light) 34%, transparent);
+  /* Stronger than it was: the first pass at this was too faint to notice on a
+     real desktop, and a glow you cannot see is not a glow. */
+  --glow-col: color-mix(in srgb, var(--amb-light) 46%, transparent);
+  --glow-edge: color-mix(in srgb, var(--amb-light) 40%, transparent);
   transition: opacity 0.6s ease;
 }
 
-/* Both gradients are centred on a bottom corner and run out well before the
-   middle of the bottom edge, so the glow stays on the curve. */
+/* Three layers: a wash along the whole bottom edge, plus a stronger pool at each
+   rounded corner to give the curve its shape.
+
+   The bottom edge is the one straight edge that gets light. It is the only part
+   of the bar that does not touch the edge of the screen, so lighting it reads as
+   the bar being lit rather than as a lit screen border. The top and the two
+   sides stay dark; the vertical falloff below is short enough that it dies out
+   before it reaches the straight part of the sides. */
 #island[data-glow="corner"]::before,
 #island[data-glow="wide"]::before,
 #island[data-glow="pulse"]::before {
   background:
-    radial-gradient(72% 150% at 2% 98%, var(--glow-col) 0%, transparent 56%),
-    radial-gradient(72% 150% at 98% 98%, var(--glow-col) 0%, transparent 56%);
+    radial-gradient(64% 140% at 0% 100%, var(--glow-col) 0%, transparent 58%),
+    radial-gradient(64% 140% at 100% 100%, var(--glow-col) 0%, transparent 58%),
+    linear-gradient(to top, var(--glow-edge) 0%, transparent 40%);
 }
 
 /* Tight and calm. */
@@ -139,25 +149,26 @@ body {
 }
 
 #island[data-glow="corner"].flowing::before {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 /* Wider and softer: the light spreads further along the curve and further out,
    without reaching the middle of the edge. */
 #island[data-glow="wide"]::before {
-  filter: blur(20px);
+  filter: blur(18px);
   opacity: 0;
-  --glow-col: color-mix(in srgb, var(--amb-light) 30%, var(--amb-base) 12%);
+  --glow-col: color-mix(in srgb, var(--amb-light) 42%, var(--amb-base) 16%);
+  --glow-edge: color-mix(in srgb, var(--amb-light) 38%, transparent);
 }
 
 #island[data-glow="wide"].flowing::before {
-  opacity: 0.7;
+  opacity: 0.92;
 }
 
 /* The same corner light, breathing. Slower than a beat, so it reads as alive
    rather than as a pulse meter. */
 #island[data-glow="pulse"]::before {
-  filter: blur(13px);
+  filter: blur(12px);
   opacity: 0;
 }
 
@@ -169,8 +180,8 @@ body {
    opacity 0, which is the default above. */
 
 @keyframes glow-breathe {
-  from { opacity: 0.4; }
-  to { opacity: 0.95; }
+  from { opacity: 0.5; }
+  to { opacity: 1; }
 }
 
 /* Colour is information, movement is decoration. */

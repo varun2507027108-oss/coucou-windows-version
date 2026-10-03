@@ -7,9 +7,9 @@ import { loadPalette } from "../src/library/palette";
 const COVER = "./cover-sample.png";
 
 const STYLES: Array<[string, string]> = [
-  ["corner", "A soft bloom on the two rounded bottom corners."],
+  ["corner", "A soft line along the bottom edge, pooling at the two rounded corners."],
   ["wide", "The same light, larger and softer, spreading further out."],
-  ["pulse", "Corner light that breathes while the track plays."],
+  ["pulse", "The same light, breathing while the track plays."],
   ["off", "No album colour on the bar at all."],
 ];
 
