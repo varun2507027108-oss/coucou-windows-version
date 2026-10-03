@@ -1,157 +1,192 @@
 <div align="center">
 
-<img src="NotchBuddy/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="96" alt="Coucou icon">
+<img src="src-tauri/icons/128x128.png" width="96" alt="Coucou icon">
 
-# Coucou
+# Coucou for Windows
 
-**A tiny friend that lives in your MacBook's notch — or at the top of your screen on Windows — and keeps an eye on your Claude Code sessions.**
+**Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
-Approve permissions, watch your agents work, drop a file, chat with Claude — all without leaving what you're doing.
+Approve agent permissions, watch your sessions work, drop a file, chat with Claude, keep an eye on your services — without leaving what you're doing. Works with Claude Code, OpenCode and Antigravity.
 
-![macOS 15+](https://img.shields.io/badge/macOS-15%2B-black?logo=apple)
-![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
-![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
-![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
+![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
+![Rust](https://img.shields.io/badge/Rust-backend-000?logo=rust)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
-![GitHub stars](https://img.shields.io/github/stars/Louis-CFM/coucou?style=social)
-
-<img src="docs/media/demo.gif" width="760" alt="Coucou in action">
 
 </div>
+
+<img src="screenshots/greeting.png" width="640" alt="Mochi waving hello at launch">
 
 ---
 
-## Why
-
-Some studios showed off gorgeous notch companions… and never let anyone use them.
-**Coucou is the open version.** Every line of code, every animation, every sound — free to use, read, fork and remix.
-
-Meet **Mochi**: a soft little squircle with big eyes that pops out of your notch, waves hello, follows your cursor with its eyes, gets annoyed when you poke it (and dizzy if you insist), and tells you the moment Claude Code needs you.
-
-## Features
-
-- 🤖 **Claude Code, live** — see every session in your notch: what it reads, edits and runs, step by step. Finished? Mochi does a happy little jump.
-- ✅ **Approve from the notch** — Claude Code permission requests show up with **Allow / Deny**. One click, back to work.
-- 🧑‍💻 **Jump to the right terminal** — open the exact terminal window of a session *(macOS)*.
-- 💬 **Ask Claude anything** — built-in chat, straight from the notch.
-- 📎 **Drop a file on the notch** — Mochi turns into a box and swallows it, then ask a question about it or send it by email *(email: macOS, Mail.app)*.
-- 🪟 **Drag Mochi onto any window** — attach that window as context for Claude *(macOS)*.
-- 🔌 **Integrations** — Stripe payments, n8n workflows, GitHub, Vercel deployments, Resend emails, Notion, Cal.com. Each one gets its own little colored Mochi.
-- 🎭 **A real character** — idle breathing, blinks, eyes on a sphere that follow your mouse, emotes, 28 handcrafted sounds, a greeting on launch.
-- 🫥 **Invisible when idle** — hides away when nothing is running, peeks out when you hover the notch (the top edge of the screen on Windows).
-- 🔒 **Private by design** — no telemetry, no account. Keys live in your macOS Keychain or Windows Credential Manager. The app only talks to the services you plug in.
-
-<table>
-<tr>
-<td><img src="docs/media/claude-code.png" alt="Claude Code session"></td>
-<td><img src="docs/media/stripe.png" alt="Stripe payments"></td>
-</tr>
-<tr>
-<td><img src="docs/media/chat.png" alt="Chat with Claude"></td>
-<td><img src="docs/media/dizzy.png" alt="Too many hits"></td>
-</tr>
-</table>
-
 ## Install
 
-### Download for macOS
+1. Download `Coucou-Windows-setup.exe` from the [latest release](releases/tag/windows-latest).
+2. Run it. It installs for the current user only — no admin prompt.
+3. Coucou starts, waves hello, and then gets out of the way.
 
-1. Grab the latest `Coucou.zip` from [Releases](https://github.com/Louis-CFM/coucou/releases).
-2. Unzip and move **Coucou.app** to `/Applications`.
-3. Launch. This build isn't notarized by Apple yet, so the first time macOS says it can't verify the developer: open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (only once).
+### "Windows protected your PC"
 
-### Download for Windows
+The installer isn't code-signed yet, so **SmartScreen** shows a blue warning the first
+few times anybody downloads it:
 
-1. Grab [`Coucou-Windows-setup.exe`](https://github.com/Louis-CFM/coucou/releases/download/windows-latest/Coucou-Windows-setup.exe) — always the newest Windows build.
-2. Run it. The installer isn't code-signed yet, so SmartScreen warns about it: click **More info → Run anyway**. It installs for your user only and asks for no administrator rights.
-3. Launch — Mochi appears at the top of your main screen.
+> Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognised app from starting.
 
-There is no notch on a PC, so the island slides out of the top edge of the screen
-instead of hiding inside one. See [`windows/README.md`](windows/README.md) for the
-rest of the differences.
+Click **More info**, then **Run anyway**. That's it. Signing is on the list; until
+then this is what an unsigned installer looks like on Windows, and you can always
+[build it yourself](#build-it-yourself) if you'd rather not trust a download.
 
-### Build from source
+## Using it
 
-**macOS** — requirements: macOS 15+, Xcode 16+, [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+<img src="screenshots/compact.png" width="292" alt="The compact island, with the integration pills as mini Mochis">
+<img src="screenshots/overview.png" width="640" alt="The overview: the focused integration on the left, the other pills on the right">
+<img src="screenshots/approval.png" width="640" alt="A Claude Code permission request, with Deny and Allow">
+<img src="screenshots/chat.png" width="640" alt="Chatting with Claude from the island">
+<img src="screenshots/drop.png" width="640" alt="Mochi turned into a box, waiting for a file">
 
-```bash
-brew install xcodegen
-git clone https://github.com/Louis-CFM/coucou.git
-cd coucou/NotchBuddy
-xcodegen
-open NotchBuddy.xcodeproj   # then ⌘R
+| What you do | What happens |
+|---|---|
+| Move the mouse to the very top-centre of the screen | Mochi peeks out |
+| Click the small island | It opens |
+| Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
+| Rest the pointer on Mochi for two seconds | Hearts |
+| Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| `Esc` | Closes the island |
+| Tray icon | Open, Settings…, Pause, Quit |
+
+Everything else happens on its own: a Claude Code permission request opens the
+island with **Deny / Allow**, a finished session shows what it did, and
+your integrations sit in the coloured pills next to Mochi.
+
+## Claude Code
+
+<img src="screenshots/settings.png" width="562" alt="The settings window">
+
+Open **Settings… → Claude Code → Install hooks…**. You get the exact diff of what
+will change in `%USERPROFILE%\.claude\settings.json`, the path of the dated backup
+that will be taken, and nothing is written until you click. Your own hooks are
+never touched, and uninstalling removes only Coucou's entries.
+
+The relay is a tiny executable, `coucou-hook.exe`, copied to
+`%LOCALAPPDATA%\Coucou\bin\` at launch. It is given 300 ms to reach Coucou and
+exits cleanly if the app is closed, slow or crashed — **a Claude Code session is
+never blocked or slowed down by Coucou.** If nobody answers a permission request
+in time, Coucou stays quiet and Claude Code asks in the terminal as usual.
+
+It works from any terminal — Windows Terminal, PowerShell, VS Code, Git Bash.
+
+## OpenCode
+
+Open **Settings… → OpenCode → Install hooks…**. Coucou copies its `coucou.js`
+plugin (with your relay path baked in) to
+`%USERPROFILE%\.config\opencode\plugins\`, with the same dated-backup and
+diff-preview flow as the Claude Code hooks. Nothing is written until you click.
+
+The plugin forwards session, tool and permission events through
+`coucou-hook.exe` to the island, where OpenCode gets its own pill. Approvals
+work the same way: Allow / Deny in the island, TUI prompt when Coucou can't
+answer. One thing to do yourself: OpenCode only raises permission prompts for
+tools your policy marks `ask`, so island approvals need something like
+
+```json
+{ "$schema": "https://opencode.ai/config.json", "permission": { "*": "ask" } }
 ```
 
-**Windows** — requirements: [Rust](https://rustup.rs), Node 20+, MSVC build tools.
+in `%USERPROFILE%\.config\opencode\opencode.json`. Explicit `deny` rules are
+still enforced first. For a single project, copy the installed plugin to
+`<project>\.opencode\plugins\coucou.js` instead of installing globally.
+
+## Antigravity
+
+Open **Settings… → Antigravity → Install hooks…**. Coucou merges its entries
+under the `coucou` key into the global `%USERPROFILE%\.gemini\config\hooks.json`
+(`PreToolUse` with a 120 s approval timeout, `PostToolUse`, `PreInvocation`
+and `Stop` at 10 s) — dated backup, diff preview, nothing written until you
+click. Antigravity gets its own pill in the island; tool calls that need a
+human show the same Allow / Deny card, and fall back to Antigravity's own
+prompt (respecting your Always Allow grants) when Coucou can't answer.
+
+For a single project, merge the `coucou` key from
+[`agents/antigravity-hooks-snippet.json`](agents/antigravity-hooks-snippet.json) into
+`<project>\.agents\hooks.json` instead of installing globally.
+
+## Chat and keys
+
+**Settings… → Claude** takes your Anthropic API key. Keys live in the **Windows
+Credential Manager**, never on disk and never in the interface — the island can
+only ask whether a key exists. Same for every integration key.
+
+No telemetry. The only network requests Coucou makes are to the services you
+configure yourself.
+
+## Build it yourself
+
+You need [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), and the
+**MSVC build tools** (Visual Studio Build Tools with "Desktop development with
+C++"). WebView2 ships with Windows 10/11.
 
 ```powershell
-git clone https://github.com/Louis-CFM/coucou.git
-cd coucou/windows
 npm install
-npm run pack                # installer lands in windows/release/
+npm run tauri dev      # live-reloading development build
+npm run pack           # builds the installer and drops it in release/
 ```
 
-## Setup
+`npm run dev` alone serves the front end in an ordinary browser, which is enough
+to work on the island's looks. It also serves `dev/upload-preview.html`, which
+replays the whole file-drop choreography on a loop — the one part of the UI that
+otherwise needs a real drag from Explorer to see. Neither page ships in the app.
 
-Click the Coucou icon in the menu bar (macOS) or in the system tray (Windows) → **Settings…**
+`npm run pack` leaves two files in `release/`, the same names the release
+workflow publishes:
 
-| What | Why | Where the key goes |
-|---|---|---|
-| **Claude Code hooks** | live sessions and approvals | **Install hooks** — Coucou backs up `~/.claude/settings.json`, merges its hooks and shows you the diff before writing anything |
-| **Anthropic API key** | chat and questions about files | Keychain / Windows Credential Manager |
-| Stripe, n8n, GitHub, Vercel, Resend, Notion, Cal.com | the integration pills | Keychain / Windows Credential Manager, all optional |
+```
+Coucou-Windows-X.Y.Z-setup.exe    the versioned installer
+Coucou-Windows-setup.exe          the same file under the rolling name
+```
 
-If Coucou isn't running, the hook exits immediately: **Claude Code is never blocked.**
+Installing is optional — `target/release/coucou.exe` runs on its own. There is no
+window in the taskbar and no console: the island at the top of the screen and the
+Mochi in the notification area are the whole app, and Quit lives in its menu.
 
-## Things to try
+The 28 sounds live in `assets/sounds/`. The path is declared once, in
+`SOUNDS_DIR` at the top of `vite.config.ts` — dev serves them from there and
+the build copies them into `dist/sounds` for the installer.
 
-| Do this | Mochi does that |
-|---|---|
-| Hover the notch (top edge on Windows) | peeks out and says hi 👋 |
-| Click it | opens |
-| Hover Mochi | blinks, eyes grow |
-| Click Mochi | squish + annoyed |
-| Click 3 times fast | 😵‍💫 dizzy for a few seconds |
-| Drag a file onto the island | turns into a box and swallows it |
-| Drag Mochi onto a window *(macOS)* | attaches it as context |
+The app icon and the tray icon are drawn in code, like Mochi itself:
 
-## How it works
+```powershell
+npm run icons          # regenerates src-tauri/icons from scripts/gen-icons.mjs
+```
 
-**macOS**
+### Layout
 
-- **Island**: a borderless `NSPanel` hugging the notch, driven by a small state machine (`hidden → petit → home`).
-- **Character**: drawn in SwiftUI `Canvas` + `TimelineView` at 60 fps — squircle body, eyes projected on a sphere, spring animations. No Rive, no Lottie, no images.
-- **Claude Code**: a tiny `nb-hook` script receives hook events and forwards them over a Unix socket to the app. For approvals it waits for your click, then answers the hook.
-- **Integrations**: lightweight pollers, paused when nothing is watching.
-- **Sounds**: 28 short WAVs played through preloaded `AVAudioPlayer`s.
+```
+  src/                 island front end (TypeScript, no framework)
+    mochi/             Mochi and the launch greeting, in Canvas 2D
+    island/            state machine, hooks, integrations
+    views/             every island view
+    settings/          the settings window
+  src-tauri/           Rust backend: window, named pipe, Claude API, pollers
+  hook/                coucou-hook.exe, the agent relay (Claude/OpenCode/Antigravity)
+  agents/              harness install assets: opencode-plugin/coucou.js,
+                       antigravity-hooks-snippet.json (per-project entries)
+  assets/sounds/       the 28 WAVs
+  scripts/             icon generator + installer pack step
+```
 
-The macOS app is native Swift 6 / SwiftUI / AppKit with **zero third-party dependencies**.
+### Log
 
-**Windows**
+`%LOCALAPPDATA%\Coucou\coucou.log` — hook events, permission decisions, poller
+problems. It stays on your machine.
 
-- A [Tauri 2](https://tauri.app) app (Rust + TypeScript): the island is a transparent, always-on-top window that never steals focus, Mochi is drawn in Canvas 2D with the same shapes, timings and sounds as on the Mac.
-- Claude Code hooks go through a tiny `coucou-hook.exe` and a named pipe; keys live in Windows Credential Manager.
-- Details and differences in [`windows/README.md`](windows/README.md).
+## Notes
 
-## Contributing
-
-Issues and PRs are very welcome — new integrations, new emotes, new sounds, bug fixes. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Credits
-
-Built by [Louis Raillé](https://louisraille.fr) with Claude Code.
-Inspired by the notch-companion concepts shared by design studios — this project is independent and not affiliated with any of them.
-
-## License
-
-- **Code:** [MIT](LICENSE) — use it, fork it, learn from it, just keep the copyright notice.
-- **Name, Mochi character, icon, sounds and media:** © Louis Raillé, all rights reserved — see [LICENSE-ASSETS.md](LICENSE-ASSETS.md). Shipping your own fork? Give it your own name and character.
-
-<div align="center">
-
-**If Mochi made you smile, a ⭐ helps a lot.**
-
-[Website](https://louis-cfm.github.io/coucou/) · [Privacy](https://louis-cfm.github.io/coucou/privacy.html) · [Terms](https://louis-cfm.github.io/coucou/terms.html) · [Support](https://louis-cfm.github.io/coucou/support.html)
-
-</div>
+- There is no notch on a PC, so the island lives at the top centre of the
+  screen and retracts into the top edge.
+- Permission approval works from **any** terminal — Windows Terminal,
+  PowerShell, VS Code, Git Bash.
+- "Open terminal" opens the working folder in VS Code when `code` is on your
+  `PATH`, and falls back to Explorer otherwise.
+- Cal.com shows the next bookings as a list.
+- Roadmap: sending a file by email, dragging Mochi onto a window to attach it
+  as context, and jumping to a specific terminal window.

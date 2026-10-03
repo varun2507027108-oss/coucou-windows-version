@@ -1,6 +1,13 @@
-# Notch Buddy — spécification
+# Coucou — spécification (Windows)
 
-Toutes les mesures sont en points macOS. Les valeurs viennent de `reference/notch-buddy.html` (constantes `NW`, `NH`, `EW`, `VIEWS`, `STATES`, `EMOTES`, `PISTES`, `AGENTS`, classe `Bot`). En cas de doute, relire le code du prototype.
+> Note Windows : ce document décrit le comportement de l'island (vues, états,
+> interactions) et reste la référence visuelle. Transposition Windows :
+> l'island est une fenêtre Tauri transparente toujours au premier plan (pas de
+> `NSPanel` ni de notch — elle se rétracte dans le bord haut de l'écran), Mochi
+> est dessiné en Canvas 2D (`src/mochi/`), et les mesures ci-dessous en points
+> valent en pixels logiques.
+
+Toutes les mesures sont en points. Les valeurs viennent de `reference/notch-buddy.html` (constantes `NW`, `NH`, `EW`, `VIEWS`, `STATES`, `EMOTES`, `PISTES`, `AGENTS`, classe `Bot`). En cas de doute, relire le code du prototype.
 
 ---
 

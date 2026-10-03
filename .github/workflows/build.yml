@@ -1,5 +1,8 @@
 name: Build
 
+# Windows-only repo: typechecks the island, runs the Rust tests and verifies
+# the release relay builds (the Tauri build script bundles it as a resource).
+
 on:
   push:
     branches: [main]
@@ -8,22 +11,32 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: windows-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Generate project
-        run: cd NotchBuddy && xcodegen
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: windows-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: windows-cargo-
 
-      - name: Build
-        run: |
-          xcodebuild \
-            -project NotchBuddy/NotchBuddy.xcodeproj \
-            -scheme NotchBuddy \
-            -configuration Release \
-            build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck the island
+        run: npx tsc --noEmit
+
+      - name: Rust tests
+        run: cargo test --workspace

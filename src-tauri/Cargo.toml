@@ -1,0 +1,63 @@
+[package]
+name = "coucou"
+description = "Coucou for Windows — Mochi lives at the top of your screen"
+authors = ["Louis Raille"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "coucou_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+# PKCE S256 for the Spotify link. The alternative (challenge method `plain`)
+# skips the hash; a tiny audited pure-Rust hash beats a weaker flow.
+sha2 = "0.10"
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+keyring = { version = "3", features = ["windows-native"] }
+image = { version = "0.25", default-features = false, features = ["png", "bmp"] }
+base64 = "0.22"
+
+windows = { version = "0.61", features = [
+  "Foundation",
+  "Media",
+  # Now-playing from the OS media session (Brave/Spotify tab): title, artist,
+  # transport state and controls. Same crate, not a new dependency.
+  "Media_Control",
+  # Album-art bytes out of the thumbnail stream.
+  "Storage_Streams",
+  # Lyrics only when actually online (see media.rs) — never fetch blind.
+  "Networking_Connectivity",
+  "Win32_Foundation",
+  # WNDCLASSW / RegisterClassW are gated behind this feature in the windows crate.
+  "Win32_Graphics_Gdi",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  # BCryptGenRandom for OAuth state/PKCE randomness: `rand` would be a new
+  # dependency for one call, this is the same `windows` crate as everything else.
+  "Win32_Security_Cryptography",
+  # Clipboard history: the clipboard itself plus GlobalLock/GlobalSize for the
+  # bytes, and CF_* format constants.
+  "Win32_System_DataExchange",
+  # GetModuleHandleW, for the window class registration.
+  "Win32_System_LibraryLoader",
+  "Win32_System_Memory",
+  "Win32_System_Ole",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+  # CoInitializeEx for the media thread: WinRT activation from an uninitialized
+  # thread fails silently.
+  "Win32_System_Com",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+] }

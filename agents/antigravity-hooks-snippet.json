@@ -1,0 +1,49 @@
+{
+  "//": "Coucou entries for a per-project Antigravity install.",
+  "//1": "Merge the \"coucou\" key into <project>/.agents/hooks.json (keep any",
+  "//2": "other keys). Replace __COUCOU_HOOK_EXE__ with your relay path —",
+  "//3": "Settings → Antigravity shows it — using forward slashes, e.g.",
+  "//4": "\"C:/Users/you/AppData/Local/Coucou/bin/coucou-hook.exe\".",
+  "//5": "The global install (Settings → Antigravity → Install) writes the same",
+  "//6": "entries to %USERPROFILE%\\.gemini\\config\\hooks.json instead.",
+  "coucou": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"__COUCOU_HOOK_EXE__\" PreToolUse antigravity",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"__COUCOU_HOOK_EXE__\" PostToolUse antigravity",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "\"__COUCOU_HOOK_EXE__\" PreInvocation antigravity",
+        "timeout": 10
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "\"__COUCOU_HOOK_EXE__\" Stop antigravity",
+        "timeout": 10
+      }
+    ]
+  }
+}

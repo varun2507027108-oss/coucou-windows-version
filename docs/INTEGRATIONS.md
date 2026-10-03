@@ -1,25 +1,38 @@
-# Notch Buddy — intégrations
+# Coucou — intégrations (Windows)
+
+> Note Windows : les flux décrits ci-dessous restent valables avec la
+> transposition suivante — relais `coucou-hook.exe` au lieu de `nb-hook`,
+> pipe nommé `\\.\pipe\coucou-<sid>` au lieu de la socket Unix, secrets dans
+> le Windows Credential Manager au lieu du Keychain, hooks Claude Code dans
+> `%USERPROFILE%\.claude\settings.json`, plugin `agents/opencode-plugin/coucou.js`
+> pour OpenCode, `hooks.json` (`%USERPROFILE%\.gemini\config\`) pour
+> Antigravity. Trois harnesses, un seul relais :
+> `coucou-hook <Event> [claude|opencode|antigravity]`.
 
 Règle d'or : **vérifier la doc officielle au moment d'implémenter**. Les formats ci-dessous sont le plan, pas une garantie. Sources à relire :
 - Hooks Claude Code : https://code.claude.com/docs/en/hooks
 - API Claude (Messages, outil de recherche web, modèles) : https://docs.claude.com/en/api/overview
 - API publique n8n : `{URL de l'instance}/api/v1/docs` (playground de l'instance de Louis)
+- Plugins OpenCode : https://dev.opencode.ai/docs/plugins
+- Hooks Antigravity : https://antigravity.google/docs/hooks
 
 ---
 
-## 1. Claude Code (sessions de Louis)
+## 1. Agents (Claude Code, OpenCode, Antigravity)
 
 ### Architecture
 ```
-claude (terminal, VS Code, app Claude)
-  └─ hook "command" ─► nb-hook (petit exécutable Swift, livré avec l'app)
-                         └─ socket Unix ─► Notch Buddy.app
-                         ◄─ décision (pour PermissionRequest)
+harness (terminal, IDE)
+  ├─ Claude Code : hook "command" ─► coucou-hook <Event> claude
+  ├─ OpenCode    : plugin coucou.js ─► coucou-hook <Event> opencode
+  └─ Antigravity : hooks.json "command" ─► coucou-hook <Event> antigravity
+                                             └─ pipe nommé ─► Coucou
+                                             ◄─ décision (PermissionRequest / PreToolUse)
 ```
-- `nb-hook` : cible séparée dans le projet, copiée dans `~/Library/Application Support/NotchBuddy/bin/nb-hook` au premier lancement.
-- Socket : `~/Library/Application Support/NotchBuddy/nb.sock`.
-- `nb-hook <Event>` lit le JSON du hook sur stdin, ajoute le contexte du terminal (`TERM_PROGRAM`, `ITERM_SESSION_ID`, `TERM_SESSION_ID`, `__CFBundleIdentifier`, le tty trouvé en remontant les processus parents, `cwd`), l'envoie à l'app.
-- **Si l'app ne répond pas en 300 ms, `nb-hook` sort en code 0 sans rien écrire** : Claude Code continue normalement. Jamais de blocage.
+- `coucou-hook` : petit exécutable Rust (`hook/`), copié dans `%LOCALAPPDATA%\Coucou\bin\` au premier lancement.
+- Pipe : `\\.\pipe\coucou-<sid>` (un par session Windows).
+- `coucou-hook <Event> [agent]` lit le JSON du hook sur stdin, ajoute le contexte du terminal (`TERM_PROGRAM`, `WT_SESSION`, `VSCODE_PID`, `cwd`), normalise la charge (Antigravity envoie `toolCall`/`conversationId`/`workspacePaths`) et l'envoie à l'app avec le tag `agent`.
+- **Si l'app ne répond pas en 300 ms, `coucou-hook` sort en code 0** : Claude Code/OpenCode sans rien écrire (le prompt natif prend le relais), Antigravity `PreToolUse` avec `{"decision":"ask"}`. Jamais de blocage.
 
 ### Événements à brancher et état du bonhomme
 | Hook | Effet dans l'app |
@@ -37,9 +50,9 @@ claude (terminal, VS Code, app Claude)
 
 Vérifier dans la doc la liste exacte des événements et leurs champs.
 
-### Approuver depuis le notch
-- Sur `PermissionRequest`, `nb-hook` **attend** la décision de l'app (défaut 110 s, réglable) puis écrit sur stdout le JSON de décision du hook (d'après la doc actuelle : `hookSpecificOutput` avec `decision.behavior` = `allow` ou `deny`). Timeout du hook dans settings.json : décision + 10 s.
-- Pas de réponse avant le délai, ou app fermée → aucune sortie, le terminal affiche sa demande habituelle. Si Louis répond dans le terminal, l'app retire l'alerte au prochain événement de la session.
+### Approuver depuis l'island
+- Sur `PermissionRequest` (Claude Code, OpenCode) ou `PreToolUse` (Antigravity), `coucou-hook` **attend** la décision de l'app (défaut 110 s, réglable) puis écrit sur stdout le JSON de décision du harness (`hookSpecificOutput` avec `decision.behavior` = `allow` ou `deny` pour Claude ; mot nu pour OpenCode ; `{"decision":…}` pour Antigravity). Timeout du hook : décision + 10 s.
+- Pas de réponse avant le délai, ou app fermée → Claude Code/OpenCode : aucune sortie, le terminal/TUI affiche sa demande habituelle ; Antigravity : `{"decision":"ask"}`. Si l'utilisateur répond dans le terminal, l'app retire l'alerte au prochain événement de la session.
 - Un bug a été signalé où `deny` était ignoré sur `PermissionRequest` (issue GitHub anthropics/claude-code #19298). **Tester allow et deny** ; si deny ne marche pas, basculer la décision sur `PreToolUse` (`permissionDecision`) pour les outils concernés.
 - « Toujours autoriser » : si la doc permet de renvoyer une règle de permission persistante, l'utiliser. Sinon l'app garde sa propre liste (projet + outil + motif de commande) et répond `allow` automatiquement ensuite. Liste visible et supprimable dans les réglages.
 - Raccourcis Y / N quand la vue `approval` est ouverte.
@@ -61,9 +74,9 @@ Demande l'autorisation Automatisation la première fois (normal).
 ### Installation des hooks : procédure obligatoire
 1. Lire `~/.claude/settings.json` (le créer s'il n'existe pas).
 2. Copier en `~/.claude/settings.json.bak-AAAAMMJJ-HHMM`.
-3. **Fusionner** : ajouter les hooks Notch Buddy sans toucher aux hooks existants. Chemin de `nb-hook` entre guillemets (il contient un espace).
-4. Montrer le diff à Louis, attendre son OK, écrire.
-5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Notch Buddy.
+3. **Fusionner** : ajouter les hooks Coucou sans toucher aux hooks existants. Chemin de `coucou-hook.exe` entre guillemets avec des slashes (il contient un espace ; Git Bash des hooks Windows).
+4. Montrer le diff à l'utilisateur, attendre son OK, écrire.
+5. Bouton « Désinstaller les hooks » dans les réglages qui retire uniquement les entrées Coucou.
 
 ---
 
@@ -86,7 +99,7 @@ Demande l'autorisation Automatisation la première fois (normal).
 
 ## 3. Fichiers déposés
 
-- Glisser-déposer natif sur la panel (types `fileURL`). Copier les fichiers dans `~/Library/Application Support/NotchBuddy/inbox/` (c'est la phase `uploading`).
+- Glisser-déposer natif sur la fenêtre (drag-drop Tauri). Copier les fichiers dans `%LOCALAPPDATA%\Coucou\inbox\` (c'est la phase `uploading`).
 - Vue `choose` :
   - **Poser une question dessus** → vue `prompt` avec une pastille du fichier. Envoi à l'API Claude (§5) : PDF en bloc `document`, images en bloc `image`, texte et code (≤ 200 Ko) en texte. Autres types : message « Je ne sais pas lire ce format, mais je peux l'envoyer par mail. »
   - **Envoyer par mail** → vue `mail` (§6).

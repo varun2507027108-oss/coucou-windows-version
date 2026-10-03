@@ -10,8 +10,8 @@ labels: bug
 
 **How to reproduce**
 
-**macOS version**
+**Windows version** (10 / 11 + build, e.g. 11 26200)
 
-**Mac model**
+**Agent** (Claude Code / OpenCode / Antigravity + version)
 
 **Coucou version**
