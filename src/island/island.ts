@@ -1233,27 +1233,35 @@ if (!IS_TAURI) {
   }
 
   /**
-   * Fills the dead space in the compact bar with what is playing.
+   * The compact bar's dead space, and the island's edge.
    *
-   * Only in compact mode and only when the mini grid has nothing to say: agent
-   * pills outrank a song title, because an agent asking for something is the one
-   * thing on that bar the user must not miss. The text is the track, tinted from
-   * the same cover colours the music view glows with, with a hairline progress
-   * bar so a glance also answers "how far in are we".
+   * The track text fills the ~200 px that used to sit empty between Mochi and
+   * the mini grid, and the sampled cover colours go on `#island` itself so the
+   * flowing border ring can use them too — the bar is the one thing on screen all
+   * day, so it should be the thing that says a song is playing. Agent pills still
+   * outrank the text: while any pill is live the grid is the message.
    */
   private syncCompactTrack() {
     const m = State.media;
     const accent = State.mediaAccent;
+    // Nothing to say, or the island is off screen: no ring either, so a hidden
+    // island is not running two animations for nobody.
+    const flowing = State.mode !== "hidden" && !!m?.active && m.playing;
+    this.islandEl.classList.toggle("flowing", flowing);
+
     // Agents first: while any pill is live the grid is the message.
     const gridBusy = State.mode === "compact" && this.miniGrid.childElementCount > 0;
     const show = State.mode === "compact" && !!m?.active && !gridBusy;
     this.compactTrack.style.opacity = show ? "1" : "0";
-    if (!show || !m) return;
 
     if (accent) {
-      this.compactTrack.style.setProperty("--amb-base", accent.base);
-      this.compactTrack.style.setProperty("--amb-light", accent.light);
+      // On the island, not on the strip: custom properties inherit, so the text
+      // picks these up and the border ring shares one source of truth.
+      this.islandEl.style.setProperty("--amb-base", accent.base);
+      this.islandEl.style.setProperty("--amb-deep", accent.deep);
+      this.islandEl.style.setProperty("--amb-light", accent.light);
     }
+    if (!show || !m) return;
     this.compactTrack.classList.toggle("playing", m.playing);
 
     const title = this.compactTrack.querySelector<HTMLElement>(".compact-track-title")!;

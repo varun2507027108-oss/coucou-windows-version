@@ -70,6 +70,11 @@ body {
   top: 0;
   left: 50%;
   background: #000;
+  /* Fallbacks for the flowing ring below, so a track with no readable art still
+     glows in the island's own neutrals instead of nothing at all. */
+  --amb-base: #3a4a63;
+  --amb-deep: #1b2434;
+  --amb-light: #7f9ec2;
   border-radius: 0 0 14px 14px;
   overflow: visible;
   will-change: width, height, transform;
@@ -88,6 +93,97 @@ body {
   inset: 0;
   overflow: hidden;
   border-radius: inherit;
+}
+
+/* ── Flowing album glow around the island ────────────────────────────────── */
+/* The interior glow in the music view is not enough: the compact bar is what is
+   actually on screen all day, and it was a flat black pill. These two rings put
+   the cover's own colour on the edge and travel it round while the track plays,
+   so "something is playing" is readable from across the desk without opening
+   anything.
+
+   --amb-base / --amb-deep / --amb-light are written onto #island by
+   syncCompactTrack from the sampled cover, and fall back to island neutrals.
+
+   ::before is the bloom (blurred, wide), ::after the crisp 1px ring. Both use
+   the mask trick — paint the full box, punch out the middle — because a gradient
+   border-image cannot be blurred and box-shadow cannot be a gradient. */
+#island::before,
+#island::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  /* Starts and ends on the same colour so the loop is seamless and the ring is
+     lit the whole way round. An earlier version faded out to transparent between
+     highlights, which meant the border went dark for most of every cycle — the
+     one thing this effect must never do.
+
+     `--amb-deep` is deliberately not used here. It is the darkest bucket mean,
+     and on a cover with a black band that lands close to black, so the ring
+     vanished on that stretch of the edge. The darkest stop is a mix of the two
+     brighter colours instead, which keeps the hue and cannot go dark. */
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--amb-light) 55%, var(--amb-base)) 0%,
+    var(--amb-light) 26%,
+    var(--amb-base) 52%,
+    var(--amb-light) 74%,
+    color-mix(in srgb, var(--amb-light) 55%, var(--amb-base)) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+#island::before {
+  filter: blur(7px);
+  /* Bleeds past the pill on purpose: this is the light in the room, not a line. */
+  inset: -3px;
+}
+
+#island.flowing::before {
+  animation: album-flow 4.6s linear infinite;
+  opacity: 0.85;
+}
+
+#island.flowing::after {
+  animation: album-flow 4.6s linear infinite;
+  opacity: 1;
+}
+
+/* Both rings travel left to right together. A conic sweep was the first idea and
+   it looked wrong: the bar is 288x32, so a rotating angle piles almost its whole
+   range into the two short vertical edges. A horizontal sweep reads as light
+   travelling along the edge, which is the only thing this shape can carry. One
+   keyframe set for both — the bloom is the same gradient, blurred.
+
+   0% → 100%, not 0% → 200%. The gradient image is twice the bar's width, so its
+   left edge resolves against a *negative* free space and anything past 100%
+   slides the image off the right edge, leaving bare black border. One full image
+   width (100%) is exactly one complete pass, and since the gradient starts and
+   ends on the same colour the loop is seamless. */
+@keyframes album-flow {
+  from { background-position: 0% 0; }
+  to { background-position: 100% 0; }
+}
+
+/* No animation, still tinted: the colour is information, the movement is only
+   decoration, and someone who asked their OS to stop animations still gets told
+   what is playing. */
+@media (prefers-reduced-motion: reduce) {
+  #island.flowing::before,
+  #island.flowing::after {
+    animation: none;
+    background-position: 50% 0;
+  }
 }
 
 #bot-canvas,
@@ -173,8 +269,10 @@ body {
    on screen, so it is the right place to answer "what is this noise". Tinted
    from the same cover palette as the music view, so the two agree. */
 #compact-track {
-  --amb-base: #3a4a63;
-  --amb-light: #7f9ec2;
+  /* No --amb-* fallbacks here on purpose. A custom property declared on an
+     element beats the same property inherited from an ancestor, so declaring
+     them here pinned the strip to the neutral blue-grey even while #island held
+     the sampled cover. They live on #island and inherit from there. */
   position: absolute;
   height: 20px;
   display: flex;

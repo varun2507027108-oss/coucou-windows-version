@@ -91,8 +91,13 @@ export function extractPalette(img: HTMLImageElement): Palette | null {
     // stray bright pixel becomes half the glow.
     const second = ranked.length > 1 && ranked[1].n > ranked[0].n * 0.18 ? ranked[1] : null;
     const base = mean(first);
+    // `deep` is the darkest of the three and is only used for large soft washes,
+    // where being dark is fine. `light` is the highlight: it draws the island's
+    // border ring and the play button, both of which disappear against a
+    // near-black panel if the sampled colour is itself nearly black — which is
+    // exactly what a cover with a black band produces. So it gets a floor.
     const deep = second ? mean(second) : shade(base, -0.42);
-    const light = second ? shade(base, 0.34) : shade(base, 0.46);
+    const light = lift(second ? shade(base, 0.34) : shade(base, 0.46), 0.42);
     return { base, deep, light };
   } catch {
     // A tainted canvas throws rather than returning null.
@@ -122,6 +127,26 @@ function shade(colour: string, amount: number): string {
     return Math.round(amount >= 0 ? v + (255 - v) * amount : v * (1 + amount));
   });
   return rgb(ch[0], ch[1], ch[2]);
+}
+
+/**
+ * Brightens an `rgb(r g b)` string until its brightest channel reaches `floor`.
+ *
+ * Scaling toward white rather than adding evenly, so the hue survives: adding
+ * the same amount to all three channels turns a saturated red into a flat pink.
+ */
+function lift(colour: string, floor: number): string {
+  const nums = colour.match(/[\d.]+/g);
+  if (!nums || nums.length < 3) return colour;
+  const ch = nums.slice(0, 3).map(Number);
+  const peak = Math.max(ch[0], ch[1], ch[2]);
+  if (peak >= floor * 255) return colour;
+  const k = (floor * 255) / Math.max(1, peak);
+  return rgb(
+    Math.min(255, Math.round(ch[0] * k)),
+    Math.min(255, Math.round(ch[1] * k)),
+    Math.min(255, Math.round(ch[2] * k)),
+  );
 }
 
 // ── Loading from a URL ───────────────────────────────────────────────────────

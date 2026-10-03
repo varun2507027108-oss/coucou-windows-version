@@ -11,6 +11,14 @@ State.settings.mediaEnabled = true;
 State.settings.mediaLyrics = true;
 State.view = "music";
 
+// Freeze the ring at a chosen point in its cycle when asked, so a screenshot
+// can show the glow travelling. See the note in music-preview.html.
+const probe = new URLSearchParams(location.search).get("probe");
+if (probe !== null) {
+  document.body.classList.add("probe");
+  document.body.style.setProperty("--probe", `${probe}s`);
+}
+
 const track: MediaSnapshot = {
   active: true,
   playing: true,
@@ -45,12 +53,15 @@ void loadPalette(track.art!).then((p) => {
   // The app gets this for free: `State.notify` marks the island dirty and
   // `syncDom` re-syncs the visible view. The harness has to do it by hand.
   view.sync();
-  // Same for the compact strip, which the island tints in syncCompactTrack().
-  const strip = document.getElementById("compact-track");
-  if (p && strip) {
-    strip.style.setProperty("--amb-base", p.base);
-    strip.style.setProperty("--amb-light", p.light);
+  // Same for the compact bar and its ring, which the island tints in
+  // syncCompactTrack() by writing the palette onto #island itself.
+  const island = document.getElementById("island");
+  if (p && island) {
+    island.style.setProperty("--amb-base", p.base);
+    island.style.setProperty("--amb-deep", p.deep);
+    island.style.setProperty("--amb-light", p.light);
   }
+  const strip = document.getElementById("compact-track");
   const fill = strip?.querySelector<HTMLElement>(".compact-track-fill");
   if (fill) {
     const pct = ((track.positionSecs + 4) / track.durationSecs) * 100;
