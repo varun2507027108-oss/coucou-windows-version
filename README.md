@@ -6,7 +6,9 @@
 
 **Mochi doesn't get a notch on a PC — so it lives at the top of your screen instead.**
 
-Approve agent permissions, watch your sessions work, drop a file, chat with Claude, keep an eye on your services — without leaving what you're doing. Works with Claude Code, OpenCode and Antigravity.
+Approve agent permissions, watch your sessions work, drop a file, chat with
+Claude, keep an eye on your services, see what song is playing — without leaving
+what you're doing. Works with Claude Code, OpenCode and Antigravity.
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=black)
@@ -21,7 +23,7 @@ Approve agent permissions, watch your sessions work, drop a file, chat with Clau
 
 ## Install
 
-1. Download `Coucou-Windows-setup.exe` from the [latest release](releases/tag/windows-latest).
+1. Download `Coucou-Windows-setup.exe` from the [releases page](../../releases).
 2. Run it. It installs for the current user only — no admin prompt.
 3. Coucou starts, waves hello, and then gets out of the way.
 
@@ -51,12 +53,57 @@ then this is what an unsigned installer looks like on Windows, and you can alway
 | Click Mochi | It gets annoyed. Three times in a row and it goes dizzy |
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
+| `Ctrl`+`Alt`+`C` | Summon the island from anywhere |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
+
+## Clipboard and files
+
+**Settings… → Clipboard & files.** Both are **off until you turn them on** — a
+clipboard history that starts recording before anyone asked for one is a
+surprise, not a feature.
+
+Clipboard history keeps text *and* images, newest first, with pins, search and
+one-click text transforms. It never records anything that looks like a
+credential (best-effort — Windows won't say who copied something), and you choose
+how long copies are kept or how many at most. Everything is local to
+`%LOCALAPPDATA%\Coucou`.
+
+The **file shelf** keeps dropped files for 30 days instead of the 7-day inbox, so
+you can drag one back out into another app long after the folder you dropped it
+from is gone. Copies only; your originals are never touched.
+
+## Now playing
+
+<img src="screenshots/music.png" width="640" alt="The now-playing view: cover, title, transport, draggable timeline and lyrics">
+
+**Settings… → Now playing.** Brave — like every Chromium — publishes the playing
+tab to Windows, so this needs no account, no keys and no network: title, artist,
+album, play state, position and the transport buttons all come from the OS media
+session. Anything your browser plays shows up.
+
+- Real transport buttons. They drive the browser, not a private player.
+- **Drag the timeline** to move the playhead, or use ← / → / Home / End.
+- **Lyrics** from [lrclib.net](https://lrclib.net) — opt-in separately, because
+  it is the only part that touches the network. Nothing is looked up while you
+  are offline, and results are cached on the machine.
+- An **optional Spotify link** adds per-song mood (which Mochi dances to) and
+  fallback artwork. Tokens live in the Windows Credential Manager; the public
+  client ID is yours to paste in.
+
+The panel is lit by the album: `src/library/palette.ts` samples the cover and
+tints the whole view in its colours. The collapsed bar carries the track title,
+a progress hairline and a soft glow along its bottom edge — **Settings… → Album
+glow on the bar** picks how it looks (`corner`, `wide`, `pulse`, `off`).
+
+## Multi-agent review
+
+When several harnesses are active, the island can list what each one is waiting
+on and act on it from one place, instead of hunting through tabs.
 
 ## Claude Code
 
@@ -132,9 +179,15 @@ npm run pack           # builds the installer and drops it in release/
 ```
 
 `npm run dev` alone serves the front end in an ordinary browser, which is enough
-to work on the island's looks. It also serves `dev/upload-preview.html`, which
-replays the whole file-drop choreography on a loop — the one part of the UI that
-otherwise needs a real drag from Explorer to see. Neither page ships in the app.
+to work on the island's looks. It also serves the harnesses in `dev/`, none of
+which ship in the app:
+
+| Page | What it is for |
+|---|---|
+| `upload-preview.html` | replays the whole file-drop choreography on a loop — the one part of the UI that otherwise needs a real drag from Explorer |
+| `music-preview.html` | renders the now-playing view with a synthetic track, for working on its looks. `?probe=<seconds>` freezes the album glow at a point in its cycle |
+| `music-scrub-check.html` | drives the real view with the IPC stubbed and asserts a timeline drag asks for the right position |
+| `glow-preview.html` | the collapsed bar once per glow style, side by side |
 
 `npm run pack` leaves two files in `release/`, the same names the release
 workflow publishes:
@@ -143,6 +196,21 @@ workflow publishes:
 Coucou-Windows-X.Y.Z-setup.exe    the versioned installer
 Coucou-Windows-setup.exe          the same file under the rolling name
 ```
+
+### Building without `tauri`
+
+If you are iterating on the Rust side and running `cargo build --release`
+directly, **run `npm run build` first**. Two things depend on that order:
+
+- The release exe embeds `dist/`. `src-tauri/build.rs` declares
+  `cargo:rerun-if-changed=../dist`, so Cargo rebuilds when the front end
+  changes — but only if the front end has actually been rebuilt.
+- `custom-protocol` is enabled unconditionally in `src-tauri/Cargo.toml`. Tauri
+  derives `dev = !custom-protocol` in its build script, and a dev build ignores
+  `frontendDist` entirely: it serves `build.devUrl` (`localhost:1420`) instead
+  of embedding anything. Without the feature, a release binary shows Chromium's
+  "localhost refused to connect" page instead of the app. `tauri build` passes
+  the feature for you; a bare `cargo build` never will.
 
 Installing is optional — `target/release/coucou.exe` runs on its own. There is no
 window in the taskbar and no console: the island at the top of the screen and the
@@ -162,15 +230,22 @@ npm run icons          # regenerates src-tauri/icons from scripts/gen-icons.mjs
 
 ```
   src/                 island front end (TypeScript, no framework)
+    core/              state, Tauri bridge, layout constants, sound
+    island/            panel shell, state machine, geometry, frame loop
+    agents/            hook and integration event plumbing
+    library/           clipboard history, file shelf, now playing, palette
     mochi/             Mochi and the launch greeting, in Canvas 2D
-    island/            state machine, hooks, integrations
-    views/             every island view
+    views/             every island view plus shared dom/ and icons/
+    upload/            the drop sequence
     settings/          the settings window
-  src-tauri/           Rust backend: window, named pipe, Claude API, pollers
+  src-tauri/           Rust backend: window, named pipe, Claude API, clipboard,
+                       files/shelf, media session, Spotify, pollers, secrets
   hook/                coucou-hook.exe, the agent relay (Claude/OpenCode/Antigravity)
   agents/              harness install assets: opencode-plugin/coucou.js,
                        antigravity-hooks-snippet.json (per-project entries)
   assets/sounds/       the 28 WAVs
+  dev/                 browser harnesses, not shipped
+  design/              prototype and target screenshots (the visual source of truth)
   scripts/             icon generator + installer pack step
 ```
 

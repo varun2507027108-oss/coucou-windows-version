@@ -16,3 +16,9 @@ src-tauri/gen/schemas/
 # Local only (never published)
 .claude/
 _prive/
+
+# Upstream's project website, kept on disk but not part of this build. It is the
+# macOS project's marketing/privacy/terms/support site, not Windows code, and
+# nothing here builds or ships it. Untracked rather than deleted so it still
+# works locally.
+docs/

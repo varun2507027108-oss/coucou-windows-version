@@ -10,8 +10,8 @@ Coucou is a Windows app (Tauri 2 + Rust + TypeScript, no framework): Mochi, a sm
 - `agents/` — harness install assets: `opencode-plugin/coucou.js` (relay path baked in at install), `antigravity-hooks-snippet.json` (per-project entries).
 - `assets/sounds/` — the 28 WAV sounds (`SOUNDS_DIR` in `vite.config.ts` is the one place the path is declared).
 - `design/prototype/notch-buddy.html` — original prototype, the visual source of truth. `design/captures/` — target screenshots.
-- `docs/SPEC.md`, `docs/INTEGRATIONS.md` — behaviour, views, states, integrations (in French; Windows mapping noted at the top of each).
-- `docs/*.html` — the site (privacy, terms, support, legal notice).
+- `dev/` — browser harnesses for looking at one thing closely: `upload-preview.html`, `music-preview.html`, `music-scrub-check.html`, `glow-preview.html`. Not part of the app bundle.
+- `docs/` — untracked. It is upstream's project website plus the French spec (`SPEC.md`, `INTEGRATIONS.md`), kept on disk for reference; nothing here builds or ships it.
 
 ## Build
 

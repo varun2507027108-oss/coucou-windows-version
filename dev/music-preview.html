@@ -16,11 +16,12 @@
         min-height: 100vh;
         font-family: var(--font);
       }
-      /* Same 720px width and 268px content height the island gives this view
-         (VIEW_LAYOUTS.music), so the screenshot is 1:1 with what ships. */
+      /* Defaults to the real geometry: the island is EXPANDED_W (640) wide and
+         VIEW_LAYOUTS.music.height (268) tall. `?w=` overrides the width so the
+         layout can be checked at other sizes. */
       #frame {
         position: relative;
-        width: 720px;
+        width: var(--frame-w, 640px);
         height: 268px;
       }
       #views {
