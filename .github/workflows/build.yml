@@ -35,16 +35,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck the island
-        run: npx tsc --noEmit
-
-      # tauri-build validates `bundle.resources` while the crate compiles, and
-      # fails the build script when a listed path is missing. coucou-hook.exe is
-      # one of them, and `cargo test` never produces it: cargo builds a test
-      # binary, not the exe. `npm run pack` gets this for free from the prebuild
-      # script, which is why it only ever broke here and never on a machine.
-      - name: Build the agent relay
-        run: cargo build --release -p coucou-hook
+      # This is the step the rest of the job depends on, and both of its halves
+      # are load-bearing. Its prebuild makes target/release/coucou-hook.exe,
+      # which tauri.conf.json lists under bundle.resources; vite build produces
+      # dist/, which frontendDist points at. cargo test will not compile the
+      # crate without either one, and it fails with a message that names neither
+      # ("resource path ... doesn't exist", "frontendDist ... doesn't exist")
+      # because both are validated by build scripts rather than by rustc.
+      #
+      # It also runs `tsc --noEmit` itself, so a separate typecheck step would
+      # only repeat it.
+      - name: Build the front end and the agent relay
+        run: npm run build
 
       - name: Rust tests
         run: cargo test --workspace
