@@ -14,7 +14,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+# `custom-protocol` is what makes the binary self-contained. tauri's build
+# script computes `dev = !custom-protocol`, and a dev build ignores
+# `frontendDist` entirely: it serves `build.devUrl` (localhost:1420) instead of
+# embedding dist/. Since this project builds with a plain
+# `cargo build --release` — never `tauri build`, so nothing passes
+# `--features custom-protocol` for us — leaving it off produced a release exe
+# that showed Chromium's "localhost refused to connect" page instead of the
+# app. Turned on unconditionally so every build embeds the island.
+tauri = { version = "2", features = ["tray-icon", "custom-protocol"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }

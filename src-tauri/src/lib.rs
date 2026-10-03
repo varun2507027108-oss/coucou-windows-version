@@ -503,16 +503,41 @@ fn log_line(message: String) {
 /// error anywhere.
 const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
 
-/// In a dev build the pages are served by Vite, so the second window needs the
-/// absolute dev URL; a bundled build resolves it inside the app bundle.
+/// The settings page, on whatever origin this build actually serves from.
+///
+/// Read off the island's live URL instead of picking an origin from a
+/// `#[cfg(dev)]` test. That cfg is a lie here: `tauri` derives it from whether
+/// the `custom-protocol` feature is on, so it tracks the feature set rather than
+/// how the binary was built, and a binary can disagree with itself about it.
+/// Taking the URL the island really loaded cannot.
 fn settings_page_url(app: &AppHandle) -> WebviewUrl {
-    #[cfg(dev)]
-    if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
-        return WebviewUrl::External(base);
+    if let Some(island) = app.get_webview_window("island") {
+        if let Ok(mut base) = island.url() {
+            base.set_path("/settings.html");
+            base.set_query(None);
+            base.set_fragment(None);
+            return WebviewUrl::External(base);
+        }
     }
-    let _ = app;
     WebviewUrl::App("settings.html".into())
+}
+
+/// Refuses navigation away from the page the app shipped.
+///
+/// This window is not a browser. A stray navigation — a link someone managed to
+/// activate, a redirect, a stale URL — replaces the whole thing with Chromium's
+/// error page, which is exactly what "Hmmm... can't reach this page" in the
+/// middle of the screen was. Same-origin navigation is still allowed, so a real
+/// reload keeps working.
+fn same_origin_only(base: &tauri::Url) -> impl Fn(&tauri::Url) -> bool + Send + 'static {
+    let origin = format!(
+        "{}://{}",
+        base.scheme(),
+        base.host_str().unwrap_or_default()
+    );
+    move |url: &tauri::Url| {
+        format!("{}://{}", url.scheme(), url.host_str().unwrap_or_default()) == origin
+    }
 }
 
 /// The settings window is created hidden at launch and only ever shown and
@@ -521,16 +546,18 @@ fn settings_page_url(app: &AppHandle) -> WebviewUrl {
 /// one that exists before the island's webview does.
 fn create_settings_window(app: &AppHandle) {
     let url = settings_page_url(app);
-    match WebviewWindowBuilder::new(app, "settings", url)
+    let mut builder = WebviewWindowBuilder::new(app, "settings", url.clone())
         .additional_browser_args(BROWSER_ARGS)
         .title("Settings — Coucou")
         .inner_size(560.0, 680.0)
         .min_inner_size(460.0, 480.0)
         .resizable(true)
         .visible(false)
-        .center()
-        .build()
-    {
+        .center();
+    if let tauri::WebviewUrl::External(external) = &url {
+        builder = builder.on_navigation(same_origin_only(external));
+    }
+    match builder.build() {
         Ok(win) => {
             // Closing it must only hide it, or it could never be reopened.
             let hidden = win.clone();

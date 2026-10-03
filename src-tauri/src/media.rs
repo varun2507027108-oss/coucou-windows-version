@@ -6,13 +6,31 @@
 // the OS. Anything the browser plays shows up, which is exactly right for a
 // mini player: it controls what you hear, not one particular app.
 //
-// One dedicated thread pumps a 2 s poll loop. WinRT calls need a COM apartment
-// the tokio pool cannot promise (its threads are borrowed, not owned), so the
-// thread initializes MTA itself and blocks on each operation with `get()` — no
-// async runtime involved at all.
+// ── Why one dedicated thread, and nothing else ───────────────────────────────
+//
+// Every SMTC call here blocks: `RequestAsync`, `TryGetMediaPropertiesAsync`,
+// `OpenReadAsync` and `LoadAsync` are all WinRT async operations, and the only
+// way to wait for one without an async runtime is `get()`. Windows forbids that
+// on a single-threaded apartment — `windows.foundation.h` asserts
+// `!is_sta_thread()` against it, and blocking one deadlocks instead of
+// returning. Tauri runs *synchronous* commands on the UI thread, which is an
+// STA: a sync command that called `get()` froze the whole app the moment a song
+// started playing and the island asked for a snapshot.
+//
+// So the rule is absolute: **no thread but this one ever calls into SMTC.** It
+// owns an MTA, it owns the session manager, and everything else — the poller,
+// the transport buttons, the view's own refreshes — sends it a job and waits for
+// the answer. Commands are `async` so Tauri never puts them on the UI thread,
+// and each wait is bounded so a dead COM thread costs a default value instead of
+// another hang.
+//
+// The manager is also requested exactly once, at startup. `RequestAsync()` in a
+// loop leaks in the OS itself (reproduced in C++ too, microsoft/windows-rs#2061),
+// and a two-second cadence is a lot of loops.
 
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -30,10 +48,13 @@ use windows::core::{Interface as _, Result as WinResult};
 use windows::Foundation::TimeSpan;
 
 use crate::island::WINDOW_LABEL;
+use crate::log;
 
 /// Thumbnails are small; anything bigger is a surprise, not art.
 const MAX_ART_BYTES: u64 = 512 * 1024;
 const POLL_EVERY: Duration = Duration::from_secs(2);
+/// How long a caller waits for the COM thread before giving up on it.
+const COM_TIMEOUT: Duration = Duration::from_secs(4);
 
 /// Song mood. "neutral" until the Spotify link enriches it with audio-features.
 pub type Mood = &'static str;
@@ -98,13 +119,43 @@ fn secs(ts: WinResult<TimeSpan>) -> f64 {
         .max(0.0)
 }
 
-fn read_snapshot() -> MediaSnapshot {
-    let manager = match GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
-        .ok()
-        .and_then(|op| op.get().ok())
-    {
-        Some(m) => m,
-        None => return MediaSnapshot::default(),
+/// Artwork is fetched once per track, not once per poll.
+///
+/// `OpenReadAsync` plus `LoadAsync` is two blocking WinRT waits and up to half a
+/// megabyte off the session, and the cover does not change while the song does.
+/// Reading it on every tick would pay all of that every two seconds, on the one
+/// apartment the whole feature depends on.
+struct ArtCache {
+    key: String,
+    data: Option<String>,
+}
+
+impl ArtCache {
+    fn new() -> Self {
+        Self { key: String::new(), data: None }
+    }
+}
+
+/// Key for artwork reuse: the same three strings `track_key` uses, minus
+/// play/pause, so pausing does not throw the cover away and re-fetch it.
+fn art_key(title: &str, artist: &str, album: &str) -> String {
+    format!("{title}\x00{artist}\x00{album}")
+}
+
+/// Base64 art is up to ~680 KB. Cloning it into the "last seen" snapshot on
+/// every tick would copy that twice a minute for a value nothing compares, so
+/// the stored copy keeps the comparison fields and drops the payload.
+fn without_art(mut snap: MediaSnapshot) -> MediaSnapshot {
+    snap.art = None;
+    snap
+}
+
+fn read_snapshot(
+    manager: Option<&GlobalSystemMediaTransportControlsSessionManager>,
+    art: &mut ArtCache,
+) -> MediaSnapshot {
+    let Some(manager) = manager else {
+        return MediaSnapshot::default();
     };
     let session: GlobalSystemMediaTransportControlsSession = match manager.GetCurrentSession() {
         Ok(s) => s,
@@ -161,6 +212,12 @@ fn read_snapshot() -> MediaSnapshot {
         duration_secs = secs(timeline.EndTime());
     }
 
+    let key = art_key(&title, &artist, &album);
+    if art.key != key {
+        art.key = key.clone();
+        art.data = read_art(&props);
+    }
+
     MediaSnapshot {
         active: true,
         playing,
@@ -169,7 +226,7 @@ fn read_snapshot() -> MediaSnapshot {
         album,
         position_secs,
         duration_secs,
-        art: read_art(&props),
+        art: art.data.clone(),
         can_play,
         can_pause,
         can_next,
@@ -202,12 +259,13 @@ fn read_art(
     ))
 }
 
-/// Reads the session from the calling thread. The caller must own a COM
-/// apartment (the poller initializes MTA once); WinRT activation from an
-/// uninitialized tokio worker fails, and silently.
-fn snapshot_on_com_thread() -> MediaSnapshot {
-    read_snapshot()
+/// Work for the COM thread. Only it may touch SMTC.
+enum Job {
+    Snapshot(Sender<MediaSnapshot>),
+    Transport { op: String, done: Sender<bool> },
 }
+
+static COM_TX: OnceLock<Sender<Job>> = OnceLock::new();
 
 /// Whether the player is allowed to do anything at all.
 ///
@@ -224,46 +282,92 @@ fn media_on(app: &AppHandle) -> bool {
     on && !crate::integrations::is_paused()
 }
 
-/// The poll loop. Emits only on change (see `snapshot_changed`); position ticks
-/// are the view's own business between snapshots.
+/// Starts the COM thread and the poll loop it runs. Emits only on change (see
+/// `snapshot_changed`); position ticks are the view's own business between
+/// snapshots.
 pub fn start(app: AppHandle, last: Arc<Mutex<MediaSnapshot>>) {
+    let (tx, rx) = channel();
+    // If this loses the race the thread already owns the channel, and commands
+    // will find `COM_TX` set by whichever `start` won.
+    let _ = COM_TX.set(tx);
     std::thread::Builder::new()
         .name("coucou-media".into())
-        .spawn(move || {
-            unsafe {
-                let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-            }
-            std::thread::sleep(Duration::from_secs(3));
-            loop {
-                std::thread::sleep(POLL_EVERY);
-                if !media_on(&app) {
-                    continue;
-                }
-                let snap = snapshot_on_com_thread();
-                let changed = {
-                    let mut guard = last.lock().unwrap();
-                    let changed = snapshot_changed(&guard, &snap);
-                    *guard = snap.clone();
-                    changed
-                };
-                if changed {
-                    let _ = app.emit_to(WINDOW_LABEL, "media", snap);
-                }
-            }
-        })
+        .spawn(move || com_loop(app, rx, last))
         .ok();
 }
 
-fn command_on_com_thread(op: &str) -> bool {
-    unsafe {
-        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+/// The one thread allowed to talk to SMTC.
+///
+/// It owns the session manager for the life of the process, serves requests as
+/// they arrive, and polls on a deadline rather than a sleep — a sleep would make
+/// a transport button wait up to two seconds for the next tick.
+fn com_loop(app: AppHandle, rx: Receiver<Job>, last: Arc<Mutex<MediaSnapshot>>) {
+    // Checked, not ignored: on an apartment that is already single-threaded
+    // this returns RPC_E_CHANGED_MODE and every `get()` below would deadlock.
+    // Refusing to start turns that into a player that never appears, which is
+    // diagnosable, instead of an app that stops responding.
+    let hr = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+    if hr.is_err() {
+        log::line("media: COM MTA refused, the player stays off");
+        return;
     }
+
     let manager = match GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
         .ok()
         .and_then(|op| op.get().ok())
     {
-        Some(m) => m,
-        None => return false,
+        Some(m) => Some(m),
+        None => {
+            log::line("media: no SMTC session manager, the player stays off");
+            return;
+        }
+    };
+
+    let mut art = ArtCache::new();
+    let mut next_poll = Instant::now() + POLL_EVERY;
+    loop {
+        let now = Instant::now();
+        let wait = next_poll.saturating_duration_since(now);
+        match rx.recv_timeout(wait) {
+            Ok(Job::Snapshot(done)) => {
+                let _ = done.send(read_snapshot(manager.as_ref(), &mut art));
+            }
+            Ok(Job::Transport { op, done }) => {
+                let _ = done.send(transport(manager.as_ref(), &op));
+            }
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => break,
+        }
+
+        let now = Instant::now();
+        if now < next_poll {
+            continue;
+        }
+        next_poll = now + POLL_EVERY;
+
+        if !media_on(&app) {
+            continue;
+        }
+        let snap = read_snapshot(manager.as_ref(), &mut art);
+        let changed = {
+            let mut guard = last.lock().unwrap();
+            let changed = snapshot_changed(&guard, &snap);
+            *guard = without_art(snap.clone());
+            changed
+        };
+        if changed {
+            let _ = app.emit_to(WINDOW_LABEL, "media", snap);
+        }
+    }
+}
+
+/// Runs on the COM thread, where blocking on `get()` is legal.
+fn transport(
+    manager: Option<&GlobalSystemMediaTransportControlsSessionManager>,
+    op: &str,
+) -> bool {
+    let Some(manager) = manager else {
+        return false;
     };
     let session = match manager.GetCurrentSession() {
         Ok(s) => s,
@@ -322,28 +426,47 @@ fn command_on_com_thread(op: &str) -> bool {
     }
 }
 
-#[tauri::command]
-pub fn media_snapshot(app: AppHandle) -> MediaSnapshot {
-    if !media_on(&app) {
-        return MediaSnapshot::default();
+/// Sends a job to the COM thread and waits for the answer, off both the UI
+/// thread and the async runtime's own workers.
+///
+/// `spawn_blocking` rather than a bare `recv`: this is a blocking wait, and
+/// doing one inside an async task parks a runtime worker for up to
+/// `COM_TIMEOUT`. A COM thread that died or wedged costs a default value, which
+/// is the whole point — it must not reproduce the hang this arrangement exists
+/// to prevent.
+async fn ask<T, F>(job: F, default: T) -> T
+where
+    T: Send + 'static,
+    F: FnOnce(Sender<T>) -> Job + Send + 'static,
+{
+    let Some(tx) = COM_TX.get().cloned() else {
+        return default;
+    };
+    let (done, rx) = channel();
+    if tx.send(job(done)).is_err() {
+        return default;
     }
-    // COM initialized here too: commands run on borrowed tokio threads, and
-    // WinRT activation from an uninitialized one fails silently.
-    unsafe {
-        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+    let answer = tauri::async_runtime::spawn_blocking(move || rx.recv_timeout(COM_TIMEOUT)).await;
+    match answer {
+        Ok(Ok(value)) => value,
+        _ => default,
     }
-    snapshot_on_com_thread()
 }
 
 #[tauri::command]
-pub fn media_command(app: AppHandle, op: String) -> bool {
+pub async fn media_snapshot(app: AppHandle) -> MediaSnapshot {
+    if !media_on(&app) {
+        return MediaSnapshot::default();
+    }
+    ask(Job::Snapshot, MediaSnapshot::default()).await
+}
+
+#[tauri::command]
+pub async fn media_command(app: AppHandle, op: String) -> bool {
     if !media_on(&app) {
         return false;
     }
-    unsafe {
-        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-    }
-    command_on_com_thread(&op)
+    ask(move |done| Job::Transport { op, done }, false).await
 }
 
 /// Spotify enrichment for the current track: mood plus fallback art. Called by
@@ -582,6 +705,31 @@ mod tests {    use super::*;
         // Same controls on both sides again: quiet.
         a.can_next = false;
         assert!(!snapshot_changed(&a, &b));
+    }
+
+    #[test]
+    fn art_is_reused_per_track_and_dropped_from_the_stored_copy() {
+        // Pausing must not count as a new track: the cover does not change, and
+        // re-reading it costs two blocking WinRT waits on the one COM apartment.
+        assert_eq!(art_key("t", "a", "b"), art_key("t", "a", "b"));
+        assert_ne!(art_key("t", "a", "b"), art_key("t2", "a", "b"));
+        assert_ne!(art_key("t", "a", "b"), art_key("t", "a2", "b"));
+
+        let snap = MediaSnapshot {
+            art: Some("data:image/png;base64,AAAA".into()),
+            ..snap("x", true)
+        };
+        // The stored snapshot drives change detection, which ignores art; keeping
+        // a ~680 KB data URL there would copy it every poll for nothing.
+        assert!(without_art(snap.clone()).art.is_none());
+        assert!(snap.art.is_some(), "without_art must not consume its argument");
+    }
+
+    #[test]
+    fn a_fresh_cache_never_reports_a_stale_cover() {
+        let mut cache = ArtCache::new();
+        assert!(cache.data.is_none());
+        assert_ne!(cache.key, art_key("t", "a", "b"));
     }
 
     #[test]
