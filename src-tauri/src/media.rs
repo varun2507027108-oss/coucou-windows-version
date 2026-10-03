@@ -76,6 +76,9 @@ pub struct MediaSnapshot {
     pub can_pause: bool,
     pub can_next: bool,
     pub can_prev: bool,
+    /// False when the session refuses to be dragged — some players publish a
+    /// timeline they will not let anyone move.
+    pub can_seek: bool,
     pub mood: Mood,
 }
 
@@ -97,6 +100,7 @@ fn snapshot_changed(a: &MediaSnapshot, b: &MediaSnapshot) -> bool {
         || a.can_pause != b.can_pause
         || a.can_next != b.can_next
         || a.can_prev != b.can_prev
+        || a.can_seek != b.can_seek
 }
 
 /// MIME from magic bytes. The thumbnail stream gives raw bytes with no content
@@ -192,8 +196,8 @@ fn read_snapshot(
         return MediaSnapshot::default();
     }
 
-    let (mut playing, mut can_play, mut can_pause, mut can_next, mut can_prev) =
-        (false, true, true, true, true);
+    let (mut playing, mut can_play, mut can_pause, mut can_next, mut can_prev, mut can_seek) =
+        (false, true, true, true, true, false);
     if let Ok(info) = session.GetPlaybackInfo() {
         if let Ok(status) = info.PlaybackStatus() {
             playing = status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
@@ -203,6 +207,7 @@ fn read_snapshot(
             can_pause = controls.IsPauseEnabled().unwrap_or(true);
             can_next = controls.IsNextEnabled().unwrap_or(true);
             can_prev = controls.IsPreviousEnabled().unwrap_or(true);
+            can_seek = controls.IsPlaybackPositionEnabled().unwrap_or(false);
         }
     }
 
@@ -231,6 +236,7 @@ fn read_snapshot(
         can_pause,
         can_next,
         can_prev,
+        can_seek,
         mood: "neutral",
     }
 }
@@ -263,6 +269,7 @@ fn read_art(
 enum Job {
     Snapshot(Sender<MediaSnapshot>),
     Transport { op: String, done: Sender<bool> },
+    Seek { position_secs: f64, done: Sender<bool> },
 }
 
 static COM_TX: OnceLock<Sender<Job>> = OnceLock::new();
@@ -334,6 +341,9 @@ fn com_loop(app: AppHandle, rx: Receiver<Job>, last: Arc<Mutex<MediaSnapshot>>) 
             }
             Ok(Job::Transport { op, done }) => {
                 let _ = done.send(transport(manager.as_ref(), &op));
+            }
+            Ok(Job::Seek { position_secs, done }) => {
+                let _ = done.send(seek(manager.as_ref(), position_secs));
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
@@ -426,6 +436,46 @@ fn transport(
     }
 }
 
+/// Clamps a drag to the track and converts it to the `TimeSpan` ticks
+/// `TryChangePlaybackPositionAsync` wants: 100-nanosecond units, so seconds
+/// times ten million. `None` when there is no usable track length.
+///
+/// A drag can land a few pixels past either end, and players reject an
+/// out-of-range seek outright instead of clamping it themselves.
+fn seek_ticks(target_secs: f64, end_secs: f64) -> Option<i64> {
+    if !target_secs.is_finite() || !end_secs.is_finite() || end_secs <= 0.0 {
+        return None;
+    }
+    let clamped = target_secs.clamp(0.0, end_secs);
+    Some((clamped * 10_000_000.0) as i64)
+}
+
+/// Moves the playhead. Runs on the COM thread, where blocking on `get()` is legal.
+fn seek(manager: Option<&GlobalSystemMediaTransportControlsSessionManager>, position_secs: f64) -> bool {
+    let Some(manager) = manager else {
+        return false;
+    };
+    let session = match manager.GetCurrentSession() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let Ok(timeline) = session.GetTimelineProperties() else {
+        return false;
+    };
+    let end = timeline
+        .EndTime()
+        .map(|v| v.Duration as f64 / 10_000_000.0)
+        .unwrap_or(0.0);
+    let Some(ticks) = seek_ticks(position_secs, end) else {
+        return false;
+    };
+    session
+        .TryChangePlaybackPositionAsync(ticks)
+        .ok()
+        .and_then(|op| op.get().ok())
+        .unwrap_or(false)
+}
+
 /// Sends a job to the COM thread and waits for the answer, off both the UI
 /// thread and the async runtime's own workers.
 ///
@@ -467,6 +517,15 @@ pub async fn media_command(app: AppHandle, op: String) -> bool {
         return false;
     }
     ask(move |done| Job::Transport { op, done }, false).await
+}
+
+/// Moves the playhead to `position_secs`, for the timeline drag.
+#[tauri::command]
+pub async fn media_seek(app: AppHandle, position_secs: f64) -> bool {
+    if !media_on(&app) || !position_secs.is_finite() {
+        return false;
+    }
+    ask(move |done| Job::Seek { position_secs, done }, false).await
 }
 
 /// Spotify enrichment for the current track: mood plus fallback art. Called by
@@ -727,9 +786,29 @@ mod tests {    use super::*;
 
     #[test]
     fn a_fresh_cache_never_reports_a_stale_cover() {
-        let mut cache = ArtCache::new();
+        let cache = ArtCache::new();
         assert!(cache.data.is_none());
         assert_ne!(cache.key, art_key("t", "a", "b"));
+    }
+
+    #[test]
+    fn a_seek_is_converted_to_timespan_ticks_and_clamped() {
+        const END: f64 = 350.0;
+        // 100-nanosecond units: 90 s is 900_000_000. Getting this wrong by 1000x
+        // lands the playhead outside the track and the player refuses the seek,
+        // which looks like "drag does nothing" rather than "wrong unit".
+        assert_eq!(seek_ticks(90.0, END), Some(900_000_000));
+        assert_eq!(seek_ticks(0.0, END), Some(0));
+        assert_eq!(seek_ticks(350.0, END), Some(3_500_000_000));
+        // A drag that overshoots either end is clamped, not passed through: some
+        // players reject an out-of-range seek outright.
+        assert_eq!(seek_ticks(-4.0, END), Some(0));
+        assert_eq!(seek_ticks(9_999.0, END), Some(3_500_000_000));
+        // Nothing to seek inside.
+        assert_eq!(seek_ticks(10.0, 0.0), None);
+        assert_eq!(seek_ticks(f64::NAN, END), None);
+        assert_eq!(seek_ticks(f64::INFINITY, END), None);
+        assert_eq!(seek_ticks(10.0, f64::NAN), None);
     }
 
     #[test]

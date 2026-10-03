@@ -239,6 +239,12 @@ class AppState {
   lyricLines: { atMs: number; text: string }[] | null = null;
   /** Shown instead of lyrics when the lookup fails, is offline, or is off. */
   lyricNote: string | null = null;
+  /**
+   * Colours sampled from the current cover. Kept here rather than inside the
+   * music view so the compact bar can tint itself from the same album without
+   * the view ever having been opened.
+   */
+  mediaAccent: { base: string; deep: string; light: string } | null = null;
 
   /** Whether an Anthropic key exists in the Credential Manager. The island can
    *  only ask "is it there", never read it. */

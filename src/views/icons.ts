@@ -54,6 +54,10 @@ export const ICONS = {
   circleDot: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6z",
   // music note (eighth notes)
   note: "M9 18.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm0 0V6l12-3v11.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+  // Four bars of differing heights. The tab used the eighth-note glyph above,
+  // but at 13px its two note heads and the beam fuse into what reads as a
+  // flag. Bars stay legible at that size and say "audio" at a glance.
+  waveform: "M6 10h2.2v4H6zM10 6.5h2.2V18H10zM14 9h2.2v6H14zM18 4h2.2v16H18z",
   // play triangle
   play: "M8 5v14l11-7z",
   // pause bars

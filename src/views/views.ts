@@ -102,7 +102,7 @@ export function buildHeader(actions: ViewActions): ViewHost {
   const tabShelf = h("button", { class: "tab", title: "Shelf", onclick: () => go("shelf") }, svg(ICONS.tray, 13));
   const tabReview = h("button", { class: "tab", title: "Pending changes", onclick: () => go("review") }, svg(ICONS.split, 13));
   // Same hide-until-on rule as clipboard/shelf: a dead tab earns no header space.
-  const tabMusic = h("button", { class: "tab", title: "Now playing", onclick: () => go("music") }, svg(ICONS.note, 13));
+  const tabMusic = h("button", { class: "tab", title: "Now playing", onclick: () => go("music") }, svg(ICONS.waveform, 13));
 
   const gearBtn = h("button", { title: "Settings", onclick: () => go("settings") }, svg(ICONS.gear, 14));
   const soundBtn = h("button", { title: "Mute", onclick: () => actions.toggleSound() }, svg(ICONS.speakerOn, 14));

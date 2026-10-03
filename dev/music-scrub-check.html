@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Dev harness: drives the real buildMusic() with the Tauri IPC stubbed, then
+     fires synthetic pointer events at the timeline to check the scrub actually
+     asks for a seek. Results land in #out so `brave --headless --dump-dom` can
+     read them. Not part of the app bundle. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>music scrub check</title>
+    <link rel="stylesheet" href="../src/style.css" />
+    <style>
+      body { margin: 0; background: #222; color: #eee; font: 12px monospace; }
+      #frame { position: relative; width: 720px; height: 268px; }
+      #views { position: absolute; inset: 0; }
+      .view.on { opacity: 1; transform: none; pointer-events: auto; }
+      #out { padding: 8px; white-space: pre; }
+    </style>
+  </head>
+  <body>
+    <div id="frame"><div id="views"></div></div>
+    <div id="out">running</div>
+    <script type="module" src="./music-scrub-check.ts"></script>
+  </body>
+</html>

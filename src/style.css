@@ -167,6 +167,72 @@ body {
   width: 0;
 }
 
+/* Now playing in the dead space of the compact bar.
+   Mochi sits at the left and the mini grid at the right, which left ~200 px of
+   nothing in between. This puts the track there: the bar is the one thing always
+   on screen, so it is the right place to answer "what is this noise". Tinted
+   from the same cover palette as the music view, so the two agree. */
+#compact-track {
+  --amb-base: #3a4a63;
+  --amb-light: #7f9ec2;
+  position: absolute;
+  height: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease-in-out;
+}
+
+.compact-track-text {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.compact-track-title,
+.compact-track-artist {
+  font: 500 10px var(--font);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact-track-title {
+  color: var(--ink);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.compact-track-artist {
+  color: var(--dim-3);
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 9px;
+}
+
+.compact-track-bar {
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.compact-track-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 2px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: var(--amb-light);
+  will-change: transform;
+}
+
 /* Compact 2×2 mini grid, to the right of the notch. */
 #mini-grid {
   position: absolute;
@@ -1228,48 +1294,144 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* ── Now playing ────────────────────────────────────────────────────────── */
-/* Same left inset as the scrolling lists: Mochi sits on top of the card's left
-   edge, so content starts where he ends. */
+/* The panel is lit by the cover. `extractPalette` samples the art and writes
+   --amb-base / --amb-deep / --amb-light; everything below reads them, and the
+   fallbacks are the island's own neutrals so a track with unreadable art still
+   looks deliberate. Three blurred layers rather than one: a flat wash reads as a
+   smudge, while a bright core with two offset blooms reads as light in a room. */
 .music-body {
+  --amb-base: #3a4a63;
+  --amb-deep: #1b2434;
+  --amb-light: #7f9ec2;
+  position: relative;
+  isolation: isolate;
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 8px;
-  padding: 6px 14px 10px 108px;
+  /* Same left inset as the scrolling lists: Mochi sits on the card's left edge,
+     so content starts where he ends. */
+  padding: 10px 18px 10px 108px;
+  overflow: hidden;
 }
 
-.music-head {
+.music-glow {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(38px);
+  opacity: 0.5;
+  transition: opacity 0.5s ease, background 0.5s ease;
+}
+
+.music-glow-a {
+  width: 340px;
+  height: 260px;
+  top: -96px;
+  right: -60px;
+  background: radial-gradient(circle at 50% 50%, var(--amb-light), transparent 68%);
+  opacity: 0.42;
+}
+
+.music-glow-b {
+  width: 300px;
+  height: 240px;
+  bottom: -110px;
+  left: 24px;
+  background: radial-gradient(circle at 50% 50%, var(--amb-base), transparent 70%);
+  opacity: 0.5;
+}
+
+/* A wide, very soft band across the middle so the whole panel carries the
+   colour rather than only its corners. */
+.music-glow-sheen {
+  width: 120%;
+  height: 130px;
+  top: 50%;
+  left: -10%;
+  border-radius: 0;
+  transform: translateY(-50%);
+  filter: blur(52px);
+  background: linear-gradient(90deg, transparent, var(--amb-base), transparent);
+  opacity: 0.24;
+}
+
+.music-body.empty .music-glow {
+  opacity: 0.16;
+}
+
+.music-body.playing .music-glow-a {
+  opacity: 0.6;
+}
+
+/* Artwork ──────────────────────────────────────────────────────────────── */
+
+.music-stage {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   min-width: 0;
+  flex: 0 0 auto;
 }
 
 .music-artwrap {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 104px;
+  height: 104px;
   flex: 0 0 auto;
+  border-radius: 14px;
+  /* The cover is the light source: a ring in its own colour reads as the art
+     emitting into the panel instead of sitting on top of it. */
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 0 34px -6px var(--amb-base);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.35s ease;
 }
 
 .music-art {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
   object-fit: cover;
   display: block;
 }
 
+/* One slot, two occupants. Toggled by a class on the wrapper rather than by
+   inline `display` writes, so a rebuild of the view cannot leave the fallback
+   stacked under the cover. */
+.music-artwrap.has-art .music-art-fallback,
+.music-artwrap:not(.has-art) .music-art {
+  display: none;
+}
+
+/* Apple's micro-interaction: the art breathes while music plays and settles
+   when it stops, which states the transport without a word. */
+.music-body.playing .music-artwrap {
+  animation: music-breathe 4.2s ease-in-out infinite;
+}
+
+@keyframes music-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-body.playing .music-artwrap { animation: none; }
+}
+
 .music-art-fallback {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--dim-3);
 }
+
+/* Text ─────────────────────────────────────────────────────────────────── */
 
 .music-meta {
   min-width: 0;
@@ -1277,7 +1439,8 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .music-title {
-  font: 600 13px var(--font);
+  font: 650 18px var(--font);
+  letter-spacing: -0.01em;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
@@ -1285,95 +1448,329 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .music-artist {
-  font: 400 11px var(--font);
-  color: var(--dim-3);
+  margin-top: 2px;
+  font: 400 12.5px var(--font);
+  color: var(--dim-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.music-transport {
+.music-subrow {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
+  margin-top: 9px;
+  min-height: 16px;
+}
+
+.music-mood {
+  font: 600 9.5px var(--font);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--amb-light);
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--amb-light) 34%, transparent);
+  background: color-mix(in srgb, var(--amb-base) 20%, transparent);
+}
+
+/* Four bars that pulse while playing. Decorative on purpose: the OS media
+   session carries no audio samples, so this is driven by play state and mood
+   rather than pretending to be a spectrum analyser. */
+.music-viz {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 14px;
+}
+
+.music-viz-bar {
+  width: 2.5px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--amb-light);
+  opacity: 0.55;
+}
+
+.music-body.playing .music-viz-bar {
+  animation: music-viz 900ms ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * 130ms);
+}
+
+@keyframes music-viz {
+  from { height: 3px; opacity: 0.45; }
+  to { height: 14px; opacity: 0.95; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-body.playing .music-viz-bar { animation: none; height: 8px; }
+}
+
+/* Timeline ─────────────────────────────────────────────────────────────── */
+
+.music-times {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 0 0 auto;
 }
 
+.music-time {
+  font: 500 10.5px var(--font);
+  color: var(--dim-3);
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+}
+
+.music-time.end {
+  text-align: right;
+}
+
+/* The bar itself is 5px, but the thing you aim at is 22px tall: a hairline
+   needs a trackpad to be precise, and the timeline was the fiddliest control in
+   the view. Padding does the hit-area work without a transparent overlay. */
+.music-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.music-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+}
+
+.music-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.13);
+  transition: height 0.15s ease;
+}
+
+.music-bar:hover::after,
+.music-bar.scrubbing::after,
+.music-bar:focus-visible::after {
+  height: 7px;
+}
+
+.music-bar:focus-visible {
+  outline: none;
+}
+
+.music-bar:focus-visible::before {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amb-light) 70%, transparent);
+}
+
+.music-bar.disabled {
+  cursor: default;
+}
+
+/* Ghost = where a drag or hover would land. Keeps the true fill visible so the
+   thumb reads as "grab me" rather than as a second progress bar. */
+.music-bar-ghost {
+  position: absolute;
+  left: 0;
+  height: 7px;
+  width: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--amb-light) 30%, transparent);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.music-bar.scrubbing .music-bar-ghost {
+  opacity: 1;
+}
+
+/* scaleX, not width: transforms run on the compositor, so the fill advances at
+   frame rate without asking layout for a new geometry 60 times a second. That
+   swap is the whole lag fix. */
+.music-bar-fill {
+  position: absolute;
+  left: 0;
+  height: 5px;
+  width: 100%;
+  border-radius: 3px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--amb-light) 78%, transparent),
+    var(--amb-light));
+  transition: height 0.15s ease;
+  will-change: transform;
+}
+
+.music-bar:hover .music-bar-fill,
+.music-bar.scrubbing .music-bar-fill {
+  height: 7px;
+}
+
+.music-bar-knob {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: var(--amb-light);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55);
+  transform: translateY(-50%) scale(0);
+  transition: transform 0.15s ease;
+}
+
+.music-bar:hover .music-bar-knob,
+.music-bar.scrubbing .music-bar-knob,
+.music-bar:focus-visible .music-bar-knob {
+  transform: translateY(-50%) scale(1);
+}
+
+/* Time bubble above the bar while hovering or dragging. */
+.music-scrub-tip {
+  position: absolute;
+  bottom: 24px;
+  transform: translateX(-50%);
+  font: 600 10px var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: rgba(12, 13, 16, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 3px 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.13s ease;
+  white-space: nowrap;
+}
+
+.music-scrub-tip.on {
+  opacity: 1;
+}
+
+/* Transport ────────────────────────────────────────────────────────────── */
+
+/* Sits in the top-right of the stage row. `margin-left: auto` is what pushes it
+   off the title block, so the row balances instead of leaving the right half of
+   the panel empty. */
+.music-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* 38px and 48px, not the 26/32 this started at. The play button sits in the
+   corner of a small always-on-top window with no hover state to aim by, and a
+   32px target meant nudging the cursor to hit it. */
 .music-btn {
-  width: 26px;
-  height: 26px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--dim-3);
-  cursor: default;
-  transition: background 0.14s, color 0.14s;
+  color: var(--dim-2);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, transform 0.1s;
 }
 
 .music-btn:hover:not([disabled]) {
-  background: rgba(255, 255, 255, 0.09);
-  color: var(--ink);
-}
-
-.music-btn.main {
-  width: 32px;
-  height: 32px;
   background: rgba(255, 255, 255, 0.1);
   color: var(--ink);
 }
 
-.music-btn[disabled] {
-  opacity: 0.3;
+.music-btn:active:not([disabled]) {
+  transform: scale(0.92);
 }
 
-.music-times {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.music-time {
-  font: 400 10px var(--font);
-  color: var(--dim-3);
-  min-width: 26px;
-}
-
-.music-time:last-child {
-  text-align: right;
-}
-
-.music-bar {
-  flex: 1 1 auto;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-}
-
-.music-bar-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: 2px;
+.music-btn.main {
+  width: 48px;
+  height: 48px;
+  color: #10121a;
   background: var(--ink);
-  opacity: 0.75;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    0 0 24px -4px var(--amb-light);
+  transition: transform 0.1s, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.music-btn.main:hover:not([disabled]) {
+  background: #fff;
+  color: #10121a;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 32px -2px var(--amb-light);
+}
+
+.music-btn[disabled] {
+  opacity: 0.32;
+  cursor: default;
+}
+
+/* Lyrics ───────────────────────────────────────────────────────────────── */
+
+/* The remaining height goes to the words. Three lines with the current one lit
+   and its neighbours dimmed gives the depth cue without anything scrolling, so
+   the space below the controls is doing work instead of sitting empty. */
+.music-lyrics {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 4px 0;
+  mask-image: linear-gradient(180deg, transparent, #000 14%, #000 84%, transparent);
 }
 
 .music-lyric {
-  font: 500 12.5px var(--font);
+  font: 500 12px var(--font);
+  line-height: 1.35;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 17px;
+  transition: color 0.25s ease, opacity 0.25s ease;
 }
 
-.music-lyric.empty {
-  font-weight: 400;
+.music-lyric.now {
+  font: 600 15px var(--font);
+  color: var(--ink);
+  padding: 1px 0;
+}
+
+.music-lyric.prev,
+.music-lyric.next {
+  color: var(--dim-3);
+  opacity: 0.5;
   font-size: 11px;
+}
+
+/* Nothing synced: one dim line with the reason or the hint, not three blanks. */
+.music-lyrics:not(.singed) .music-lyric.prev,
+.music-lyrics:not(.singed) .music-lyric.next {
+  display: none;
+}
+
+.music-lyrics:not(.singed) .music-lyric.now {
+  font: 400 11.5px var(--font);
   color: var(--dim-3);
 }
+
 
 /* Search, pinned above the scrolling rows so a query is never scrolled away. */
 .list-searchbar {

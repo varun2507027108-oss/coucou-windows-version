@@ -97,9 +97,10 @@ export const VIEW_LAYOUTS: Record<IslandViewName, ViewLayout> = {
   clipboard: { height: 268, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   shelf: { height: 268, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   review: { height: 268, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
-  // Transport + progress + one lyric line. Shorter than the scrolling lists:
-  // everything fits without scrolling.
-  music: { height: 212, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
+  // Cover + transport + timeline + three lyric lines. 212 px fitted the old
+  // layout but left the lyrics with zero height once the cover grew, so this
+  // matches the other tall views and gives the words somewhere to live.
+  music: { height: 268, botX: 54, botY: null, botDiameter: 46, agentMode: "none" },
   greeting: { height: 150, botX: 320, botY: 90, botDiameter: 0, agentMode: "none" },
 };
 

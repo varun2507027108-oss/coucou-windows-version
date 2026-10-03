@@ -148,6 +148,8 @@ export const Bridge = {
   mediaSnapshot: () => call<MediaSnapshot>("media_snapshot"),
   /** play | pause | toggle | next | prev. Fires from your clicks only. */
   mediaCommand: (op: string) => call<boolean>("media_command", { op }),
+  /** Moves the playhead, for dragging the timeline. Clamped to the track. */
+  mediaSeek: (positionSecs: number) => call<boolean>("media_seek", { positionSecs }),
   /** Synced + plain lyrics for a track. Offline, disabled, or missing → empty. */
   mediaLyrics: (artist: string, title: string, album: string, durationSecs: number) =>
     call<MediaLyrics>("media_lyrics", { artist, title, album, durationSecs }),
@@ -217,6 +219,8 @@ export interface MediaSnapshot {
   canPause: boolean;
   canNext: boolean;
   canPrev: boolean;
+  /** False when the player publishes a timeline it will not let anyone move. */
+  canSeek: boolean;
   mood: MediaMood;
 }
 

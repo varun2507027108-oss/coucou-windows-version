@@ -1,0 +1,108 @@
+<!doctype html>
+<!-- Dev harness: renders the now-playing view with a synthetic track so the
+     layout, palette extraction and scrubber can be checked without a real media
+     session. Not part of the app bundle. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>music preview</title>
+    <link rel="stylesheet" href="../src/style.css" />
+    <style>
+      body {
+        margin: 0;
+        background: #6b7280;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        font-family: var(--font);
+      }
+      /* Same 720px width and 268px content height the island gives this view
+         (VIEW_LAYOUTS.music), so the screenshot is 1:1 with what ships. */
+      #frame {
+        position: relative;
+        width: 720px;
+        height: 268px;
+      }
+      #views {
+        position: absolute;
+        inset: 0;
+      }
+      .view.on {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+      /* The compact bar as the island positions it: 288x32, Mochi left, mini
+         grid right, and the track in between. Mirrors applyGeometry(). */
+      #compact-demo {
+        position: absolute;
+        left: 50%;
+        bottom: 60px;
+        transform: translateX(-50%);
+        width: 288px;
+        height: 32px;
+        border-radius: 0 0 14px 14px;
+        background: #141518;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+      #compact-demo .cd-mochi {
+        position: absolute;
+        left: 12px;
+        top: 5px;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background: linear-gradient(180deg, #fbfbfc, #e7e9ec);
+      }
+      #compact-demo #compact-track {
+        /* The island sets this from syncCompactTrack(); the harness has to.
+           Geometry mirrors applyGeometry(): left 62, width 288-40-29-8-62. */
+        opacity: 1;
+        left: 62px;
+        width: 149px;
+        top: 6px;
+      }
+      #compact-demo #mini-grid {
+        left: 219px;
+        top: 1.5px;
+        opacity: 0;
+      }
+      #compact-demo .mini {
+        width: 13px;
+        height: 13px;
+        border-radius: 7px;
+      }
+      #label {
+        position: absolute;
+        left: 50%;
+        bottom: 4px;
+        transform: translateX(-50%);
+        color: #9aa1ad;
+        font: 11px monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frame">
+      <div id="views"></div>
+    </div>
+    <div id="compact-demo">
+      <div class="cd-mochi"></div>
+      <div id="compact-track">
+        <div class="compact-track-text">
+          <div class="compact-track-title">Superman</div>
+          <div class="compact-track-artist">Eminem, Dina Rae</div>
+    </div>
+        <div class="compact-track-bar"><div class="compact-track-fill"></div></div>
+      </div>
+      <div id="mini-grid">
+        <div class="mini" style="background:#3E86E0"></div>
+        <div class="mini" style="background:#EFAE5A"></div>
+        <div class="mini" style="background:#8C73F2"></div>
+        <div class="mini" style="background:#E86A6A"></div>
+      </div>
+    </div>
+    <script type="module" src="./music-preview.ts"></script>
+  </body>
+</html>

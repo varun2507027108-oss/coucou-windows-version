@@ -130,6 +130,8 @@ export class Island {
   private botGlow!: HTMLElement;
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
+  private compactTrack!: HTMLElement;
+  private compactTrackFill: HTMLElement | null = null;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -302,6 +304,12 @@ export class Island {
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
+    this.compactTrack = h("div", { id: "compact-track" },
+      h("div", { class: "compact-track-text" },
+        h("div", { class: "compact-track-title" }),
+        h("div", { class: "compact-track-artist" })),
+      h("div", { class: "compact-track-bar" }, h("div", { class: "compact-track-fill" })));
+    this.compactTrackFill = this.compactTrack.querySelector(".compact-track-fill");
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
@@ -341,6 +349,7 @@ export class Island {
       this.botGlow,
       this.botCanvas,
       this.miniGrid,
+      this.compactTrack,
       this.countdown,
     );
 
@@ -691,6 +700,14 @@ expand(view: IslandViewName) {
 // Centred on the pill's vertical middle (29 px height of the 2x2 grid).
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
     this.miniGrid.style.top = `${(hh - 29) / 2}px`;
+    // The gap between Mochi and the mini grid used to be ~200 px of nothing.
+    // It is now the track, so the compact bar says what is playing instead of
+    // being a blank strip you have to open to understand.
+    const trackLeft = 62;
+    const trackRight = w - 40 - 29 - 8;
+    this.compactTrack.style.left = `${trackLeft}px`;
+    this.compactTrack.style.width = `${Math.max(0, trackRight - trackLeft)}px`;
+    this.compactTrack.style.top = `${(hh - 20) / 2}px`;
     this.greetingCanvas.style.left = `${(w - EXPANDED_W) / 2}px`;
     this.uploadCanvas.el.style.left = `${(w - EXPANDED_W) / 2}px`;
 
@@ -955,6 +972,9 @@ if (!IS_TAURI) {
       (State.mode === "expanded" && State.view === "greeting") ||
       UploadSeq.isActive ||
       viewAnimating ||
+      // A playing track has to keep the bar's progress moving even if Mochi has
+      // settled, otherwise the line in the compact bar jumps every snapshot.
+      (State.mode === "compact" && !!State.media?.playing) ||
       nowMs - this.cursorHotAt < 250;
     const budget = moving ? 0 : IDLE_FRAME_MS;
     if (budget > 0 && nowMs - this.lastDrawAt < budget) {
@@ -1004,6 +1024,7 @@ if (!IS_TAURI) {
     this.views.get(State.view)?.tick?.(nowMs);
     if (UploadSeq.isActive) this.stepSequence();
     this.updateCountdown(nowMs);
+    this.updateCompactTrackProgress();
 
     // Nothing is drawn while the island is hidden, so nothing may keep the loop
     // alive either. This used to read `... || this.engine.busy || State.mode !==
@@ -1206,8 +1227,64 @@ if (!IS_TAURI) {
     }
 
     syncMiniBotStates(State.tasks);
+    this.syncCompactTrack();
     this.engine.setState(State.effectiveState);
     this.syncMusicMood();
+  }
+
+  /**
+   * Fills the dead space in the compact bar with what is playing.
+   *
+   * Only in compact mode and only when the mini grid has nothing to say: agent
+   * pills outrank a song title, because an agent asking for something is the one
+   * thing on that bar the user must not miss. The text is the track, tinted from
+   * the same cover colours the music view glows with, with a hairline progress
+   * bar so a glance also answers "how far in are we".
+   */
+  private syncCompactTrack() {
+    const m = State.media;
+    const accent = State.mediaAccent;
+    // Agents first: while any pill is live the grid is the message.
+    const gridBusy = State.mode === "compact" && this.miniGrid.childElementCount > 0;
+    const show = State.mode === "compact" && !!m?.active && !gridBusy;
+    this.compactTrack.style.opacity = show ? "1" : "0";
+    if (!show || !m) return;
+
+    if (accent) {
+      this.compactTrack.style.setProperty("--amb-base", accent.base);
+      this.compactTrack.style.setProperty("--amb-light", accent.light);
+    }
+    this.compactTrack.classList.toggle("playing", m.playing);
+
+    const title = this.compactTrack.querySelector<HTMLElement>(".compact-track-title")!;
+    const artist = this.compactTrack.querySelector<HTMLElement>(".compact-track-artist")!;
+    const fill = this.compactTrack.querySelector<HTMLElement>(".compact-track-fill")!;
+    const nextTitle = m.title || "Unknown title";
+    if (title.textContent !== nextTitle) title.textContent = nextTitle;
+    const nextArtist = m.artist || m.album || "";
+    if (artist.textContent !== nextArtist) artist.textContent = nextArtist;
+
+    const elapsed = m.playing ? (performance.now() - State.mediaAtWallMs) / 1000 : 0;
+    const pos = m.positionSecs + Math.max(0, elapsed);
+    const pct = m.durationSecs > 0 ? Math.min(100, (pos / m.durationSecs) * 100) : 0;
+    fill.style.transform = `scaleX(${pct / 100})`;
+  }
+
+  /**
+   * The hairline progress in the compact bar, advanced per frame rather than per
+   * snapshot. One transform write on one node, and skipped entirely when the bar
+   * is not showing.
+   */
+  private updateCompactTrackProgress() {
+    if (this.compactTrack.style.opacity === "0") return;
+    const m = State.media;
+    if (!m?.active) return;
+    const fill = this.compactTrackFill;
+    if (!fill) return;
+    const elapsed = m.playing ? (performance.now() - State.mediaAtWallMs) / 1000 : 0;
+    const pos = m.positionSecs + Math.max(0, elapsed);
+    const pct = m.durationSecs > 0 ? Math.min(100, (pos / m.durationSecs) * 100) : 0;
+    fill.style.transform = `scaleX(${pct / 100})`;
   }
 
   /**

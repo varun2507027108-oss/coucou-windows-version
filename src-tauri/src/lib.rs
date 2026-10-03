@@ -652,6 +652,7 @@ pub fn run() {
             secret_clear,
             media::media_snapshot,
             media::media_command,
+            media::media_seek,
             media::media_lyrics,
             media::media_enrich,
             spotify::spotify_status,
