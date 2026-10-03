@@ -754,6 +754,10 @@ expand(view: IslandViewName) {
   private wireInput() {
     // The wake strip is the only thing the OS can hit while the island is hidden.
     this.wakeStrip.addEventListener("mouseenter", () => {
+      // Quieted by preference or by Ctrl+Alt+M. Checked here as well as in the
+      // pointer-events toggle below, so the behaviour does not depend on the CSS
+      // having been applied yet.
+      if (State.settings.quietHover) return;
       Sound.resume();
       // No `State.mode` guard: the strip is the only OS-hit surface while the
       // island is hidden, but the window is also parked there while *expanded*,
@@ -1227,21 +1231,26 @@ if (!IS_TAURI) {
     }
 
     syncMiniBotStates(State.tasks);
-    this.syncCompactTrack();
+    this.syncAmbientChrome();
     this.engine.setState(State.effectiveState);
     this.syncMusicMood();
   }
 
   /**
-   * The compact bar's dead space, and the island's edge.
+   * Everything about the island's chrome that is driven by state rather than by
+   * a click: the album glow and its travelling ring, the track in the compact
+   * bar's dead space, and whether the wake strip is listening at all.
    *
-   * The track text fills the ~200 px that used to sit empty between Mochi and
-   * the mini grid, and the sampled cover colours go on `#island` itself so the
-   * flowing border ring can use them too — the bar is the one thing on screen all
-   * day, so it should be the thing that says a song is playing. Agent pills still
-   * outrank the text: while any pill is live the grid is the message.
+   * Three unrelated-looking things live together because they all change on the
+   * same signal (a snapshot, a preference) and all want to be reflected in the
+   * same frame; splitting them meant three passes over the same DOM for no gain.
+   *
+   * The track fills the ~200 px that used to sit empty between Mochi and the
+   * mini grid, and the sampled cover colours go on `#island` itself so the glow
+   * can use them too. Agent pills outrank the text: while any pill is live the
+   * grid is the message.
    */
-  private syncCompactTrack() {
+  private syncAmbientChrome() {
     const m = State.media;
     const accent = State.mediaAccent;
 
@@ -1259,6 +1268,12 @@ if (!IS_TAURI) {
     const gridBusy = State.mode === "compact" && this.miniGrid.childElementCount > 0;
     const show = State.mode === "compact" && !!m?.active && !gridBusy;
     this.compactTrack.style.opacity = show ? "1" : "0";
+
+    // Quiet on hover takes the strip out of hit-testing entirely, rather than just
+    // ignoring the event. The strip is a real 240x6 region sitting over whatever
+    // app is maximised, so leaving it clickable would keep swallowing the pointer
+    // at the top of the screen — the other half of what makes it irritating.
+    this.wakeStrip.style.pointerEvents = State.settings.quietHover ? "none" : "";
 
     if (accent) {
       // On the island, not on the strip: custom properties inherit, so the text

@@ -44,12 +44,27 @@ then this is what an unsigned installer looks like on Windows, and you can alway
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | `Ctrl`+`Alt`+`C` | Summon the island from anywhere |
+| `Ctrl`+`Alt`+`M` | Quiet on hover — stop the island waking when your pointer crosses the top of the screen |
 | `Esc` | Closes the island |
-| Tray icon | Open, Settings…, Pause, Quit |
+| Tray icon | Open, Settings…, Pause, Quiet on hover, Quit |
 
 Everything else happens on its own: a Claude Code permission request opens the
 island with **Deny / Allow**, a finished session shows what it did, and
 your integrations sit in the coloured pills next to Mochi.
+
+### Quiet on hover
+
+Moving the pointer to the top of the screen is how the island wakes, which is
+also how it gets in the way of whatever you are working in at the top of the
+screen. `Ctrl`+`Alt`+`M` (or **Settings… → Quiet on hover**, or the tray menu)
+turns that off.
+
+While it is on, Coucou appears only when you ask for it: the summon hotkey, the
+tray menu, or an agent that actually needs an answer — a permission request
+still opens the island, because that is the one thing you cannot afford to miss.
+The 240×6 strip at the top of the screen also stops being clickable, so the
+pointer goes to your app rather than to Coucou. The setting is remembered; the
+chord is the fast path.
 
 ## Clipboard and files
 

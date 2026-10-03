@@ -690,6 +690,17 @@ function librarySection(): HTMLElement {
   };
   paintGlow();
 
+  // Quiet on hover. Next to Now playing rather than buried, because it is about
+  // the island appearing over whatever is at the top of the screen — the thing
+  // somebody reaches for the hotkey after it has annoyed them twice.
+  const quietNote = h("p", { class: "hint" });
+  const paintQuiet = () => {
+    quietNote.textContent = settings.quietHover
+      ? "On. Coucou only appears when you ask for it: Ctrl+Alt+C, the tray menu, or an agent that needs an answer."
+      : "Off. Moving the pointer to the top of the screen wakes the island.";
+  };
+  paintQuiet();
+
   return h(
     "section",
     {},
@@ -751,6 +762,16 @@ function librarySection(): HTMLElement {
       glowSeg,
     ),
     glowNote,
+    h("div", { class: "row" },
+      h("label", { text: "Quiet on hover" }),
+      toggle(settings.quietHover, (v) => {
+        settings.quietHover = v;
+        void save();
+        paintQuiet();
+      }),
+      h("span", { class: "hint", text: "or press Ctrl+Alt+Q" }),
+    ),
+    quietNote,
   );
 }
 

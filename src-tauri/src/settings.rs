@@ -54,6 +54,13 @@ pub struct Settings {
     /// hand-editable JSON, and an unknown value has to degrade to the default
     /// rather than refuse to load the whole file.
     pub media_glow: String,
+    /// Stop the island waking when the pointer crosses the top of the screen.
+    ///
+    /// Off by default, because that hover is how the island is summoned at all.
+    /// It is a preference rather than a session flag on purpose: somebody who
+    /// turns it on has usually been irritated by it repeatedly, and a flag that
+    /// silently reset on the next restart would just come back.
+    pub quiet_hover: bool,
 }
 
 fn default_model() -> String {
@@ -86,6 +93,7 @@ impl Default for Settings {
             media_lyrics: false,
             spotify_client_id: String::new(),
             media_glow: "corner".into(),
+            quiet_hover: false,
         }
     }
 }
@@ -164,5 +172,28 @@ mod tests {
         let parsed: Settings = serde_json::from_slice(strip_bom(&with_bom)).unwrap_or_default();
         assert!(parsed.clipboard_enabled, "a BOM reset the stored preferences");
         assert!(parsed.shelf_enabled);
+    }
+
+    #[test]
+    fn an_unknown_glow_style_falls_back_instead_of_wiping_the_file() {
+        // `media_glow` is a string so this file stays hand-editable, which means a
+        // typo is possible. `#[serde(default)]` has to absorb it the same way it
+        // absorbs a missing key — one bad value must not cost the other
+        // preferences, because `load` cannot report an error, it just defaults.
+        let json = br#"{"mediaGlow":"sparkly","quietHover":true,"clipboardEnabled":true}"#;
+        let parsed: Settings = serde_json::from_slice(json).unwrap_or_default();
+        assert_eq!(parsed.media_glow, "sparkly", "the raw value is kept as-is");
+        assert!(parsed.quiet_hover, "a bad sibling value reset a good one");
+        assert!(parsed.clipboard_enabled);
+    }
+
+    #[test]
+    fn quiet_hover_defaults_off_so_the_pointer_still_wakes_the_island() {
+        // Off is the only safe default: with it on and nobody having asked, the
+        // island would be unreachable except by hotkey.
+        assert!(!Settings::default().quiet_hover);
+        // And a file written before the preference existed must not gain it.
+        let parsed: Settings = serde_json::from_slice(br#"{"soundEnabled":true}"#).unwrap();
+        assert!(!parsed.quiet_hover);
     }
 }

@@ -150,6 +150,8 @@ export interface Settings {
   spotifyClientId: string;
   /** Album glow on the collapsed bar: "corner" | "wide" | "pulse" | "off". */
   mediaGlow: string;
+  /** Stop the island waking when the pointer crosses the top of the screen. */
+  quietHover: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -173,6 +175,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mediaLyrics: false,
   spotifyClientId: "",
   mediaGlow: "corner",
+  quietHover: false,
 };
 
 type Listener = () => void;
