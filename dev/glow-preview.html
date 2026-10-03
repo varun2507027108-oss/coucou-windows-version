@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Dev harness: renders the collapsed island with each album-glow style, side
+     by side, so the choice can be made from a picture instead of four rebuilds.
+     Not part of the app bundle. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>glow options</title>
+    <link rel="stylesheet" href="../src/style.css" />
+    <link rel="stylesheet" href="../src/settings/settings.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 26px 30px 30px;
+        background: #6b7280;
+        font-family: var(--font);
+      }
+      h1 { margin: 0 0 4px; font: 600 15px var(--font); color: #fff; }
+      p.lede { margin: 0 0 22px; font: 400 12px var(--font); color: #e2e6ec; }
+      .grid { display: flex; gap: 26px; flex-wrap: wrap; }
+      .cell { display: flex; flex-direction: column; gap: 9px; }
+      .cell > .name { font: 600 11.5px var(--font); color: #fff; letter-spacing: .02em; }
+      .cell > .desc { font: 400 11px var(--font); color: #e6e9ee; max-width: 300px; }
+      /* A slab of "desktop" so the glow has something to sit against, and the
+         bar is glued to its top edge exactly as it is on screen. */
+      .desk { padding-top: 0; }
+      #island {
+        position: relative;
+        left: 0;
+        transform: none;
+        width: 288px;
+        height: 32px;
+      }
+      .picker { display: flex; gap: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>Album glow &mdash; collapsed bar only</h1>
+    <p class="lede">
+      Corners only. The straight left and right edges sit against the screen
+      edge and are deliberately left dark.
+    </p>
+    <div class="grid" id="grid"></div>
+    <script type="module" src="./glow-preview.ts"></script>
+  </body>
+</html>

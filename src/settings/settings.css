@@ -131,6 +131,108 @@ section > h2 {
   flex: 1 1 auto;
 }
 
+/* ── Album glow picker ────────────────────────────────────────────────────────
+   The four options are a difference of degree and motion, and a word does not
+   convey that. Each chip is a miniature of the real effect — same gradients,
+   same blur, same radii as `#island::before` — sitting on a fake pill whose
+   proportions match the collapsed bar, so what you pick is what you get. The
+   chips use a fixed sample colour rather than the current album's, because the
+   picker has to stay readable when nothing is playing. */
+.glow-seg {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.glow-opt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px 6px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.glow-opt:hover {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--ink);
+}
+
+.glow-opt.on {
+  background: rgba(255, 255, 255, 0.17);
+  color: var(--ink);
+}
+
+.glow-opt-chip {
+  position: relative;
+  width: 34px;
+  height: 15px;
+  border-radius: 0 0 5px 5px;
+  background: #0b0c0e;
+  overflow: visible;
+  flex: 0 0 auto;
+}
+
+/* The chip's own glow, same shape as the island's. */
+.glow-opt-chip::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 9px;
+  opacity: 0;
+  pointer-events: none;
+  --sample: #e8a05a;
+}
+
+.glow-opt-chip[data-glow="corner"]::before,
+.glow-opt-chip[data-glow="wide"]::before,
+.glow-opt-chip[data-glow="pulse"]::before {
+  background:
+    radial-gradient(72% 150% at 2% 98%, var(--sample) 0%, transparent 56%),
+    radial-gradient(72% 150% at 98% 98%, var(--sample) 0%, transparent 56%);
+}
+
+.glow-opt-chip[data-glow="corner"]::before {
+  filter: blur(5px);
+  opacity: 0.85;
+}
+
+.glow-opt-chip[data-glow="wide"]::before {
+  filter: blur(8px);
+  opacity: 0.7;
+}
+
+.glow-opt-chip[data-glow="pulse"]::before {
+  filter: blur(6px);
+  opacity: 0.85;
+  animation: glow-breathe 5.2s ease-in-out infinite alternate;
+}
+
+/* The unselected chips stay dim so the chosen one reads at a glance. */
+.glow-opt:not(.on) .glow-opt-chip::before {
+  opacity: 0.3;
+}
+
+.glow-opt-chip[data-glow="off"]::before {
+  display: none;
+}
+
+.glow-seg.off .glow-opt[data-glow="off"] .glow-opt-chip {
+  background: repeating-linear-gradient(
+    45deg, #0b0c0e 0 3px, #191a1d 3px 6px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-opt-chip[data-glow="pulse"]::before {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
 .dot {
   width: 8px;
   height: 8px;

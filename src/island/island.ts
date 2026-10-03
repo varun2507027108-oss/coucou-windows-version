@@ -1244,9 +1244,15 @@ if (!IS_TAURI) {
   private syncCompactTrack() {
     const m = State.media;
     const accent = State.mediaAccent;
-    // Nothing to say, or the island is off screen: no ring either, so a hidden
-    // island is not running two animations for nobody.
-    const flowing = State.mode !== "hidden" && !!m?.active && m.playing;
+
+    // The chosen style lives on the element as data-glow so the CSS owns what
+    // each one looks like; the island only decides whether it is on at all.
+    this.islandEl.dataset.glow = State.settings.mediaGlow || "corner";
+
+    // Collapsed only. Expanded, the panel already carries the album colour
+    // through the music view's own glow, and the pill's straight edges are flush
+    // with the screen there, so an edge glow reads as a lit screen border.
+    const flowing = State.mode === "compact" && !!m?.active && m.playing;
     this.islandEl.classList.toggle("flowing", flowing);
 
     // Agents first: while any pill is live the grid is the message.
@@ -1256,9 +1262,8 @@ if (!IS_TAURI) {
 
     if (accent) {
       // On the island, not on the strip: custom properties inherit, so the text
-      // picks these up and the border ring shares one source of truth.
+      // picks these up and the glow shares one source of truth.
       this.islandEl.style.setProperty("--amb-base", accent.base);
-      this.islandEl.style.setProperty("--amb-deep", accent.deep);
       this.islandEl.style.setProperty("--amb-light", accent.light);
     }
     if (!show || !m) return;

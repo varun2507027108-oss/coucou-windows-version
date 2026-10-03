@@ -148,6 +148,8 @@ export interface Settings {
   mediaLyrics: boolean;
   /** Spotify client ID for the optional link. Public identifier, not a secret. */
   spotifyClientId: string;
+  /** Album glow on the collapsed bar: "corner" | "wide" | "pulse" | "off". */
+  mediaGlow: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -170,6 +172,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mediaEnabled: false,
   mediaLyrics: false,
   spotifyClientId: "",
+  mediaGlow: "corner",
 };
 
 type Listener = () => void;

@@ -655,6 +655,41 @@ function librarySection(): HTMLElement {
   };
   paintLyrics();
 
+  // Glow style. Each button carries a live sample of its own effect rather than a
+  // label: the difference between "tight" and "wide" is not something a word
+  // conveys, and the choice only means anything against a real album colour.
+  const GLOW_STYLES: Array<[string, string, string]> = [
+    ["corner", "Corner", "A soft bloom on the two rounded bottom corners."],
+    ["wide", "Wide", "The same light, larger and softer, spreading further."],
+    ["pulse", "Pulse", "Corner light that breathes while the track plays."],
+    ["off", "Off", "No album colour on the bar at all."],
+  ];
+  const glowButtons = GLOW_STYLES.map(([id, label, hint]) =>
+    h("button", {
+      class: "glow-opt",
+      title: hint,
+      "data-glow": id,
+      onclick: () => {
+        settings.mediaGlow = id;
+        void save();
+        paintGlow();
+      },
+    }, h("span", { class: "glow-opt-chip", "data-glow": id }), label),
+  );
+  const glowSeg = h("div", { class: "glow-seg" }, ...glowButtons);
+  const glowNote = h("p", { class: "hint" });
+  const paintGlow = () => {
+    const current = GLOW_STYLES.find(([id]) => id === settings.mediaGlow);
+    for (const b of glowButtons) {
+      b.classList.toggle("on", b.dataset.glow === settings.mediaGlow);
+    }
+    glowSeg.classList.toggle("off", settings.mediaGlow === "off");
+    glowNote.textContent = current
+      ? current[2]
+      : "Saved value not recognised; showing Corner.";
+  };
+  paintGlow();
+
   return h(
     "section",
     {},
@@ -711,6 +746,11 @@ function librarySection(): HTMLElement {
       }),
     ),
     lyricsNote,
+    h("div", { class: "row" },
+      h("label", { text: "Album glow on the bar" }),
+      glowSeg,
+    ),
+    glowNote,
   );
 }
 

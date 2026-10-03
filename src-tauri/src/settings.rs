@@ -49,6 +49,11 @@ pub struct Settings {
     /// Spotify client ID for the optional link (mood + artwork). Public
     /// identifier, not a secret — tokens live in the Credential Manager.
     pub spotify_client_id: String,
+    /// How the collapsed bar shows the album's colour: "corner", "wide",
+    /// "pulse" or "off". A string rather than an enum because this file is
+    /// hand-editable JSON, and an unknown value has to degrade to the default
+    /// rather than refuse to load the whole file.
+    pub media_glow: String,
 }
 
 fn default_model() -> String {
@@ -80,6 +85,7 @@ impl Default for Settings {
             media_enabled: false,
             media_lyrics: false,
             spotify_client_id: String::new(),
+            media_glow: "corner".into(),
         }
     }
 }

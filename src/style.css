@@ -95,94 +95,89 @@ body {
   border-radius: inherit;
 }
 
-/* ── Flowing album glow around the island ────────────────────────────────── */
-/* The interior glow in the music view is not enough: the compact bar is what is
-   actually on screen all day, and it was a flat black pill. These two rings put
-   the cover's own colour on the edge and travel it round while the track plays,
-   so "something is playing" is readable from across the desk without opening
-   anything.
+/* ── Album glow around the compact bar ───────────────────────────────────── */
+/* Corner-only, and only while the island is collapsed.
+   The straight left and right edges sit flush against the edge of the screen,
+   so a glow there reads as a lit-up screen border rather than as Mochi's bar.
+   The only curved parts of the collapsed pill are its two bottom corners, so
+   those are the only parts that glow.
 
-   --amb-base / --amb-deep / --amb-light are written onto #island by
-   syncCompactTrack from the sampled cover, and fall back to island neutrals.
+   There is no ring and no hard edge anywhere in here. Each variant is a blurred
+   radial gradient sitting under the corner, which is as soft as this can get
+   without becoming a wash over the whole bar.
 
-   ::before is the bloom (blurred, wide), ::after the crisp 1px ring. Both use
-   the mask trick — paint the full box, punch out the middle — because a gradient
-   border-image cannot be blurred and box-shadow cannot be a gradient. */
-#island::before,
-#island::after {
+   --amb-base / --amb-light are written onto #island from the sampled cover by
+   syncCompactTrack; --glow-col is the softened album colour they mix into.
+   The style is chosen by `data-glow` on #island, from Settings. */
+#island::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
+  /* Bleeds past the pill so the light has somewhere to go. */
+  inset: -12px;
+  border-radius: 22px;
   pointer-events: none;
+  z-index: 0;
   opacity: 0;
-  z-index: 1;
-  /* Starts and ends on the same colour so the loop is seamless and the ring is
-     lit the whole way round. An earlier version faded out to transparent between
-     highlights, which meant the border went dark for most of every cycle — the
-     one thing this effect must never do.
-
-     `--amb-deep` is deliberately not used here. It is the darkest bucket mean,
-     and on a cover with a black band that lands close to black, so the ring
-     vanished on that stretch of the edge. The darkest stop is a mix of the two
-     brighter colours instead, which keeps the hue and cannot go dark. */
-  background-image: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--amb-light) 55%, var(--amb-base)) 0%,
-    var(--amb-light) 26%,
-    var(--amb-base) 52%,
-    var(--amb-light) 74%,
-    color-mix(in srgb, var(--amb-light) 55%, var(--amb-base)) 100%
-  );
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
+  --glow-col: color-mix(in srgb, var(--amb-light) 34%, transparent);
+  transition: opacity 0.6s ease;
 }
 
-#island::before {
-  filter: blur(7px);
-  /* Bleeds past the pill on purpose: this is the light in the room, not a line. */
-  inset: -3px;
+/* Both gradients are centred on a bottom corner and run out well before the
+   middle of the bottom edge, so the glow stays on the curve. */
+#island[data-glow="corner"]::before,
+#island[data-glow="wide"]::before,
+#island[data-glow="pulse"]::before {
+  background:
+    radial-gradient(72% 150% at 2% 98%, var(--glow-col) 0%, transparent 56%),
+    radial-gradient(72% 150% at 98% 98%, var(--glow-col) 0%, transparent 56%);
 }
 
-#island.flowing::before {
-  animation: album-flow 4.6s linear infinite;
+/* Tight and calm. */
+#island[data-glow="corner"]::before {
+  filter: blur(11px);
+  opacity: 0;
+}
+
+#island[data-glow="corner"].flowing::before {
   opacity: 0.85;
 }
 
-#island.flowing::after {
-  animation: album-flow 4.6s linear infinite;
-  opacity: 1;
+/* Wider and softer: the light spreads further along the curve and further out,
+   without reaching the middle of the edge. */
+#island[data-glow="wide"]::before {
+  filter: blur(20px);
+  opacity: 0;
+  --glow-col: color-mix(in srgb, var(--amb-light) 30%, var(--amb-base) 12%);
 }
 
-/* Both rings travel left to right together. A conic sweep was the first idea and
-   it looked wrong: the bar is 288x32, so a rotating angle piles almost its whole
-   range into the two short vertical edges. A horizontal sweep reads as light
-   travelling along the edge, which is the only thing this shape can carry. One
-   keyframe set for both — the bloom is the same gradient, blurred.
-
-   0% → 100%, not 0% → 200%. The gradient image is twice the bar's width, so its
-   left edge resolves against a *negative* free space and anything past 100%
-   slides the image off the right edge, leaving bare black border. One full image
-   width (100%) is exactly one complete pass, and since the gradient starts and
-   ends on the same colour the loop is seamless. */
-@keyframes album-flow {
-  from { background-position: 0% 0; }
-  to { background-position: 100% 0; }
+#island[data-glow="wide"].flowing::before {
+  opacity: 0.7;
 }
 
-/* No animation, still tinted: the colour is information, the movement is only
-   decoration, and someone who asked their OS to stop animations still gets told
-   what is playing. */
+/* The same corner light, breathing. Slower than a beat, so it reads as alive
+   rather than as a pulse meter. */
+#island[data-glow="pulse"]::before {
+  filter: blur(13px);
+  opacity: 0;
+}
+
+#island[data-glow="pulse"].flowing::before {
+  animation: glow-breathe 5.2s ease-in-out infinite alternate;
+}
+
+/* "off" needs no rule: no matching selector means the pseudo-element stays at
+   opacity 0, which is the default above. */
+
+@keyframes glow-breathe {
+  from { opacity: 0.4; }
+  to { opacity: 0.95; }
+}
+
+/* Colour is information, movement is decoration. */
 @media (prefers-reduced-motion: reduce) {
-  #island.flowing::before,
-  #island.flowing::after {
+  #island[data-glow="pulse"].flowing::before {
     animation: none;
-    background-position: 50% 0;
+    opacity: 0.8;
   }
 }
 
