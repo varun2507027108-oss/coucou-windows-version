@@ -44,7 +44,7 @@ then this is what an unsigned installer looks like on Windows, and you can alway
 | Rest the pointer on Mochi for two seconds | Hearts |
 | Drag a file onto the island | Mochi turns into a box, swallows it, then offers to answer questions about it |
 | `Ctrl`+`Alt`+`C` | Summon the island from anywhere |
-| `Ctrl`+`Alt`+`M` | Quiet on hover — stop the island waking when your pointer crosses the top of the screen |
+| `Ctrl`+`Alt`+`Q` | Quiet on hover — stop the island waking when your pointer crosses the top of the screen |
 | `Esc` | Closes the island |
 | Tray icon | Open, Settings…, Pause, Quiet on hover, Quit |
 
@@ -56,13 +56,13 @@ your integrations sit in the coloured pills next to Mochi.
 
 Moving the pointer to the top of the screen is how the island wakes, which is
 also how it gets in the way of whatever you are working in at the top of the
-screen. `Ctrl`+`Alt`+`M` (or **Settings… → Quiet on hover**, or the tray menu)
-turns that off.
+screen. `Ctrl`+`Alt`+`Q` (or **Settings… → Quiet on hover**, or the tray menu)
+turns that off and hides the island outright.
 
-While it is on, Coucou appears only when you ask for it: the summon hotkey, the
-tray menu, or an agent that actually needs an answer — a permission request
-still opens the island, because that is the one thing you cannot afford to miss.
-The 240×6 strip at the top of the screen also stops being clickable, so the
+While it is on, Coucou appears only when you ask for it: the summon hotkey or
+the tray menu. Agent approval cards stay down too, so the harness falls back to
+its own prompt — quiet means nothing on your screen unless you asked. The
+240×6 strip at the top of the screen also stops being clickable, so the
 pointer goes to your app rather than to Coucou. The setting is remembered; the
 chord is the fast path.
 
@@ -100,10 +100,11 @@ session. Anything your browser plays shows up.
 
 The panel is lit by the album: `src/library/palette.ts` samples the cover and
 tints the whole view in its colours. The collapsed bar carries the track title, a
-progress hairline, and soft light in the cover's colours — three layers (a tight
-one at the rounded edges, a wide ambient one, and a very faint outer one) in a
-fixed box, so it reads as the bar emitting light rather than as a coloured band
-across the top of the screen, and fades out well before the screen edges.
+progress hairline, and light in the cover's colours — four lighting-only layers
+in a fixed box: a defined edge ring in the dominant/secondary hues, a quiet
+inner reflection, a short halo, and (in `Breathe`) a slow travelling highlight.
+It reads as the bar emitting light rather than as a coloured band across the
+top of the screen, and fades out well before the screen edges.
 **Settings… → Album glow on the bar** picks how it looks (`Tight`, `Wide`,
 `Breathe`, `Off`). Colours cross-fade over 1.4s when the song changes.
 
@@ -161,6 +162,19 @@ prompt (respecting your Always Allow grants) when Coucou can't answer.
 For a single project, merge the `coucou` key from
 [`agents/antigravity-hooks-snippet.json`](agents/antigravity-hooks-snippet.json) into
 `<project>\.agents\hooks.json` instead of installing globally.
+
+If the Antigravity pill stays idle while Antigravity works, Antigravity isn't
+running the hook — the relay side is fine. Check three things: open a **new
+session** (hooks are picked up per session), make sure the `coucou` entry is
+**enabled** under … → Customizations → Hooks (IDE) or Settings →
+Customizations → Hooks (2.0/CLI, where `/hooks` also lists them), and keep
+**Quiet on hover off** (quiet keeps every card down, so approvals fall back to
+Antigravity's own prompt). Every tool call fires `PreToolUse` (`matcher:
+"*"`), so all requests do reach Coucou — except ones you already granted
+**Always Allow** in Antigravity, which its own prompt auto-allows silently, and
+a second call arriving while a card is still pending (one card, one request).
+To confirm the path live, watch `%LOCALAPPDATA%\Coucou\coucou.log` while
+triggering a tool: a working hook prints `hook PreToolUse awaiting decision`.
 
 ## Chat and keys
 
