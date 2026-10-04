@@ -7,9 +7,9 @@ import { loadPalette } from "../src/library/palette";
 const COVER = "./cover-sample.png";
 
 const STYLES: Array<[string, string]> = [
-  ["corner", "Tight: definition at the rounded edges, close in."],
-  ["wide", "Wider and softer, reaching further out."],
-  ["pulse", "The same light, breathing while the track plays."],
+  ["corner", "Defined edge light with a quiet inset reflection."],
+  ["wide", "Same edge with a broader, softer halo."],
+  ["pulse", "Adds a slow travelling highlight and a gentle playing response."],
   ["off", "No album colour on the bar at all."],
 ];
 
@@ -21,10 +21,10 @@ const build = (style: string, desc: string) => {
   island.className = "flowing";
   island.dataset.glow = style;
 
-  // Same three layers, same order, as Island's constructor.
+  // Same four lighting layers, same order, as Island's constructor.
   const glow = document.createElement("div");
   glow.className = "notch-glow";
-  for (const cls of ["glow-inner", "glow-mid", "glow-outer"]) {
+  for (const cls of ["glow-halo", "glow-sheen", "glow-edge", "glow-sweep"]) {
     const i = document.createElement("i");
     i.className = cls;
     glow.append(i);

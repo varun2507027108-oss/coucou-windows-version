@@ -301,13 +301,14 @@ export class Island {
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
-    // The album glow: three blurred layers in a fixed box, behind everything.
+    // The album glow: lighting-only layers in a fixed box, behind everything.
     // First child so it paints under the canvases and the track text, which is
     // what keeps the content readable over it.
     this.glowEl = h("div", { class: "notch-glow", "aria-hidden": "true" },
-      h("i", { class: "glow-inner" }),
-      h("i", { class: "glow-mid" }),
-      h("i", { class: "glow-outer" }));
+      h("i", { class: "glow-halo" }),
+      h("i", { class: "glow-sheen" }),
+      h("i", { class: "glow-edge" }),
+      h("i", { class: "glow-sweep" }));
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
@@ -1277,7 +1278,7 @@ if (!IS_TAURI) {
 
   /**
    * Everything about the island's chrome that is driven by state rather than by
-   * a click: the album glow and its travelling ring, the track in the compact
+   * a click: the album glow and its optional travelling highlight, the track in
    * bar's dead space, and whether the wake strip is listening at all.
    *
    * Three unrelated-looking things live together because they all change on the
@@ -1319,10 +1320,11 @@ if (!IS_TAURI) {
       // reaches the three glow layers and the track text together.
       //
       // `--amb-light` is the track's own colour — the progress line wants the
-      // saturated one. `--amb-glow-a/b` are the softened pair, because the same
-      // saturated value spread over a 40px blur turns into neon. Both are
-      // registered as <color> in CSS, which is what lets the 1.4s cross-fade
-      // between one cover's light and the next actually run.
+      // saturated one. `--amb-glow-a/b` are the normalized dominant/secondary
+      // hues. A large blur would turn them into haze; the tight edge geometry
+      // keeps their identity. Both are registered as <color> in CSS, which is
+      // what lets the 1.4s cross-fade between one cover's light and the next
+      // actually run.
       this.islandEl.style.setProperty("--amb-base", accent.base);
       this.islandEl.style.setProperty("--amb-light", accent.light);
       this.islandEl.style.setProperty("--amb-glow-a", accent.glowA);

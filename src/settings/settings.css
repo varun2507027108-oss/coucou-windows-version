@@ -175,57 +175,69 @@ section > h2 {
   overflow: visible;
   flex: 0 0 auto;
 }
-/* Two layers, mirroring the island's inner and mid. A third would need a real
-   child element — a chip has only ::before and ::after — and at 34x15px the
-   faint outer layer is below the threshold of being visible anyway. What matters
-   is that the swatch shows the same *shape* of effect: tight and bright at the
-   rounded edges, wide and faint around them. */
+/* Two pseudo-layers mirroring the island's static edge and its halo. The island
+   has additional inner-reflection and sweep layers, but at 34x15px an animated
+   sweep would be illegible, and the halo already shows spread. What matters here
+   is the difference between a defined border and a broad wash. */
 .glow-opt-chip::before,
 .glow-opt-chip::after {
   content: "";
   position: absolute;
-  border-radius: 9px;
-  opacity: 0;
   pointer-events: none;
   --sample: #e8a05a;
   --sample-b: #7d6a58;
 }
 
+/* Contained halo behind the mock pill. */
 .glow-opt-chip::before {
   inset: -9px;
-}
-
-.glow-opt-chip::after {
-  inset: -4px;
-  border-radius: 6px;
-}
-
-.glow-opt-chip[data-glow="corner"]::before,
-.glow-opt-chip[data-glow="wide"]::before,
-.glow-opt-chip[data-glow="pulse"]::before,
-.glow-opt-chip[data-glow="corner"]::after,
-.glow-opt-chip[data-glow="wide"]::after,
-.glow-opt-chip[data-glow="pulse"]::after {
+  border-radius: 10px;
   background:
-    radial-gradient(60% 150% at 36% 58%, var(--sample) 0%, transparent 62%),
-    radial-gradient(44% 128% at 78% 66%, var(--sample-b) 0%, transparent 62%);
-}
-
-.glow-opt-chip[data-glow="corner"]::before { filter: blur(6px); opacity: 1; }
-.glow-opt-chip[data-glow="corner"]::after { filter: blur(3px); opacity: 0.9; }
-
-.glow-opt-chip[data-glow="wide"]::before { filter: blur(9px); opacity: 1; }
-.glow-opt-chip[data-glow="wide"]::after { filter: blur(4px); opacity: 0.75; }
-
-.glow-opt-chip[data-glow="pulse"]::before {
+    radial-gradient(62% 150% at 36% 58%, var(--sample) 0%, transparent 64%),
+    radial-gradient(48% 128% at 78% 66%, var(--sample-b) 0%, transparent 66%);
   filter: blur(6px);
   opacity: 1;
-  animation: glow-breathe 5.4s ease-in-out infinite alternate;
 }
-.glow-opt-chip[data-glow="pulse"]::after {
-  filter: blur(3px);
+
+/* Defined mock border, masked to a 1px ring. */
+.glow-opt-chip::after {
+  inset: -3px;
+  padding: 1px;
+  border-radius: 0 0 7px 7px;
+  background: linear-gradient(96deg, var(--sample-b) 0%, var(--sample) 45%, var(--sample-b) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: blur(1px);
   opacity: 0.9;
-  animation: glow-breathe-inner 5.4s ease-in-out infinite alternate;
+}
+
+.glow-opt-chip[data-glow="wide"]::before {
+  inset: -12px;
+  filter: blur(9px);
+}
+
+.glow-opt-chip[data-glow="pulse"]::before {
+  animation: swatch-breathe 6.5s ease-in-out infinite alternate;
+}
+
+.glow-opt-chip[data-glow="pulse"]::after {
+  background:
+    linear-gradient(100deg, transparent 32%, rgba(255, 255, 255, 0.22) 50%, transparent 68%),
+    linear-gradient(96deg, var(--sample-b) 0%, var(--sample) 45%, var(--sample-b) 100%);
+  background-size: 230% 100%, 100% 100%;
+  animation: swatch-travel 12s ease-in-out infinite alternate;
+}
+
+@keyframes swatch-breathe {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+
+@keyframes swatch-travel {
+  from { background-position: 0% 50%, 0% 50%; }
+  to { background-position: 100% 50%, 0% 50%; }
 }
 
 /* The unselected chips stay dim so the chosen one reads at a glance. */
@@ -249,7 +261,6 @@ section > h2 {
   .glow-opt-chip[data-glow="pulse"]::before,
   .glow-opt-chip[data-glow="pulse"]::after {
     animation: none;
-    opacity: 0.95;
   }
 }
 

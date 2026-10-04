@@ -95,39 +95,37 @@ body {
   border-radius: inherit;
 }
 
-/* ── Album glow around the compact bar ───────────────────────────────────── */
+/* ── Album edge light around the compact bar ───────────────────────────────── */
 /* Light the notch emits, driven by the cover. Collapsed bar only — the expanded
    panel already carries the album colour through the music view's own ambience,
    and the pill's straight edges sit flush against the edge of the screen, so
    lighting those reads as a lit screen border rather than as Mochi's bar.
 
-   Three layers, cheapest-looking first. One box-shadow cannot do this: it either
-   hugs the edge tightly enough to look like a neon outline, or spreads far enough
-   to be a wash, and there is no blur radius in between that does both. Separate
-   blurred elements give each layer its own falloff so they read as one light
-   rather than as three rings.
+   Four lighting-only layers, listed in visual priority order. A large blurred
+   wash is deliberately not the design: large blurs mix neighbouring hues into
+   grey or brown haze, which is exactly what the previous effect did.
 
-     .glow-inner  small blur, strongest  — definition at the rounded edges
-     .glow-mid    wide blur, medium       — atmosphere around the pill
-     .glow-outer  largest blur, faintest  — the room the light is in, and gone
-                                             well before the screen edges
+     .glow-edge    tight ring, strongest    — colour identity at the rounded edge
+     .glow-sheen   small blur, quiet        — glass-like reflection inside the pill
+     .glow-halo   broad blur, faintest      — short ambient falloff, never wallpaper
+     .glow-sweep  narrow moving highlight   — only for the reactive style
 
-   The primary radial is biased towards the content side (34% across, where the
-   track text and Mochi sit, and where the artwork sits in the music view), so
-   the light reads as coming from the thing showing the song. A second, smaller
-   radial in the secondary colour keeps a two-colour cover from flattening into
-   one tint.
+   The primary edge gradient starts in the secondary colour at the far left and
+   resolves into the dominant colour across the content, then returns to the
+   secondary colour at the far right. Two hues therefore share one continuous
+   border without banding, stripes, or rainbow segments.
 
-   Containment is structural, not hoped for. `.notch-glow` is a fixed 460x210 box
-   centred on a 288px pill, so the effect cannot reach past ~86px from the notch
-   on a 1536px screen. Its own radial mask fades to transparent well inside that
-   box, so even a 34px blur is never clipped into a visible straight edge — the
-   mask guarantees there is no full-width band, whatever the blur is set to.
+   Containment is structural, not hoped for. `.notch-glow` is a fixed 400x180 box
+   centred on a 288x32 pill, so the effect cannot reach past about 56px left or
+   right. Its own radial mask fades to transparent well inside that box, so even
+   the soft halo is zero before the wrapper boundary and there is no full-width
+   band.
 
-   --amb-glow-a / --amb-glow-b come from the sampled cover via palette.ts, already
-   desaturated toward their own luminance so a vivid cover does not become neon.
-   They are registered as <color> below so they interpolate: a song change
-   cross-fades the light over 1.4s instead of snapping to the new cover. */
+   --amb-glow-a / --amb-glow-b come from the sampled cover via palette.ts. They
+   are normalized dominant and secondary hues, not desaturated toward luminance,
+   because tight edge lighting must preserve colour identity. They are registered
+   as <color> below so they interpolate: a song change cross-fades the light over
+   1.4s instead of snapping to the new cover. */
 
 /* Registered so a colour change animates. An unregistered custom property is a
    token stream, not a value, so `transition` on it does nothing and the light
@@ -154,115 +152,166 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 460px;
-  height: 210px;
+  width: 400px;
+  height: 180px;
   transform: translate(-50%, -50%);
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
   opacity: 0;
   /* Fades out long before the box edge. This is what guarantees containment:
-     the outer layer can be blurred as hard as it likes and still be zero well
-     inside 460px. */
-  mask-image: radial-gradient(58% 64% at 50% 52%, #000 0%, rgba(0, 0, 0, 0.5) 54%, transparent 80%);
+     the halo is zero well before 400px, so there is no band across the screen. */
+  mask-image: radial-gradient(72% 78% at 50% 54%, #000 0%, rgba(0, 0, 0, 0.52) 54%, transparent 82%);
   transition: opacity 0.6s ease;
 }
 
 .notch-glow > i {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
   display: block;
-  border-radius: 50%;
   pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
-/* Layer 1 — inner. Tight, so the rounded corners get an edge to read against
-   without becoming an outline: nothing here is a border, it is light sitting
-   just outside the pill. The primary radial is biased left towards the content
-   but sized to reach the far corner too, so both rounded ends glow and the
-   effect still reads as coming from the thing showing the song. */
-.glow-inner {
-  inset: -10px;
+/* Layer 1 — defined edge. An exact 2px rounded-border mask painted with the
+   normalized dominant and secondary colours. It is crisp because it follows
+   the pill rather than hovering around it, but it is a 1.5px coloured-light
+   blur, not a CSS border: there is no solid neon outline. */
+.glow-edge {
+  width: 292px;
+  height: 36px;
+  padding: 2px;
+  border-radius: 0 0 18px 18px;
   background:
-    radial-gradient(64% 132% at 36% 58%, var(--amb-glow-a) 0%, transparent 64%),
-    radial-gradient(44% 116% at 78% 66%, var(--amb-glow-b) 0%, transparent 64%);
-  filter: blur(8px);
-  opacity: 0.34;
+    linear-gradient(94deg,
+      color-mix(in srgb, var(--amb-glow-b) 82%, var(--amb-glow-a) 18%) 0%,
+      var(--amb-glow-a) 22%,
+      color-mix(in srgb, var(--amb-glow-a) 76%, white 10%) 48%,
+      var(--amb-glow-a) 74%,
+      color-mix(in srgb, var(--amb-glow-b) 82%, var(--amb-glow-a) 18%) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: blur(1.5px);
+  opacity: 0.62;
+  /* In the real island this edge lies outside the clip at y=0, but the dev
+     preview has a visible top. Clip it there so the preview tests the same
+     visible geometry: sides plus rounded bottom. */
+  clip-path: inset(8px -3px -3px -3px);
 }
 
-/* Layer 2 — medium ambient. Wider and much fainter; this is the layer that
-   makes the bar look lit rather than outlined. */
-.glow-mid {
-  inset: -26px;
+/* Layer 2 — inner reflection. A low, blurred wash hugging the inside of that
+   same rounded edge. Its peak is at the lower edge and lower corners, while the
+   centre remains dark so title, artist, progress, and icons stay crisp. */
+.glow-sheen {
+  width: 284px;
+  height: 28px;
+  border-radius: 0 0 15px 15px;
   background:
-    radial-gradient(58% 150% at 40% 58%, var(--amb-glow-a) 0%, transparent 58%),
-    radial-gradient(44% 128% at 78% 68%, var(--amb-glow-b) 0%, transparent 60%);
-  filter: blur(19px);
-  opacity: 0.13;
+    radial-gradient(48% 100% at 16% 100%, color-mix(in srgb, var(--amb-glow-a) 26%, transparent) 0%, transparent 70%),
+    radial-gradient(48% 100% at 84% 100%, color-mix(in srgb, var(--amb-glow-b) 24%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg,
+      transparent 30%,
+      color-mix(in srgb, var(--amb-glow-a) 14%, transparent) 76%,
+      color-mix(in srgb, var(--amb-glow-a) 22%, transparent) 100%);
+  filter: blur(3px);
+  opacity: 0.17;
 }
 
-/* Layer 3 — outer. Barely there, and gone long before the screen edges. */
-.glow-outer {
-  inset: -44px;
-  background: radial-gradient(62% 168% at 44% 58%, var(--amb-glow-a) 0%, transparent 56%);
-  filter: blur(34px);
-  opacity: 0.05;
+/* Layer 3 — external halo. Secondary to the edge by design: it quietly connects
+   the pill to the desktop without extending far enough to become wallpaper. */
+.glow-halo {
+  width: 340px;
+  height: 120px;
+  border-radius: 50%;
+  background:
+    radial-gradient(58% 68% at 42% 58%, color-mix(in srgb, var(--amb-glow-a) 12%, transparent) 0%, transparent 68%),
+    radial-gradient(44% 56% at 76% 64%, color-mix(in srgb, var(--amb-glow-b) 10%, transparent) 0%, transparent 70%);
+  filter: blur(17px);
+  opacity: 0.08;
 }
 
-/* On by default; the styles below adjust the spread. "off" matches no rule, so
-   the wrapper stays at opacity 0. */
+/* Optional travelling highlight. Same exact edge mask as the static ring, but
+   with a narrow bright segment that drifts slowly across the two long sides.
+   It is disabled unless the reactive style is chosen, so static mode cannot be
+   mistaken for loading. */
+.glow-sweep {
+  width: 292px;
+  height: 36px;
+  padding: 2px;
+  border-radius: 0 0 18px 18px;
+  background:
+    linear-gradient(100deg,
+      transparent 30%,
+      color-mix(in srgb, var(--amb-glow-a) 84%, white 16%) 50%,
+      color-mix(in srgb, var(--amb-glow-b) 64%, white 12%) 55%,
+      transparent 71%);
+  background-size: 230% 100%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: blur(1px);
+  opacity: 0;
+  clip-path: inset(8px -3px -3px -3px);
+}
+
+/* All three styles share the edge/reflection/halo hierarchy; "off" matches no
+   rule, so the wrapper stays at opacity 0. Wide broadens only the halo. Pulse
+   adds the travelling highlight and a gentle response while music plays. */
 #island[data-glow="corner"].flowing .notch-glow,
 #island[data-glow="wide"].flowing .notch-glow,
 #island[data-glow="pulse"].flowing .notch-glow {
   opacity: 1;
 }
 
-/* Wider and softer: same three layers, more reach and less of an edge. */
-#island[data-glow="wide"] .glow-inner {
-  inset: -14px;
-  filter: blur(11px);
-  opacity: 0.26;
-}
-#island[data-glow="wide"] .glow-mid {
-  inset: -34px;
-  filter: blur(26px);
-  opacity: 0.15;
-}
-#island[data-glow="wide"] .glow-outer {
-  inset: -56px;
-  filter: blur(44px);
-  opacity: 0.06;
+#island[data-glow="wide"] .glow-halo {
+  width: 368px;
+  height: 138px;
+  filter: blur(23px);
+  opacity: 0.1;
 }
 
-/* Breathing. Spec is 100% → 105-110%: it should be something you notice without
-   noticing, so this moves opacity and scale a hair and nothing else. Slower than
-   a beat, which is what stops it reading as a pulse meter. Compositor-only
-   properties, so it costs no layout. */
-#island[data-glow="pulse"].flowing .notch-glow {
-  animation: glow-breathe 5.4s ease-in-out infinite alternate;
+/* Playback response. The static edge is already at full definition, so pulse
+   does not redraw it: it intensifies it by about eight percent, breathes its
+   scale from 100% to ~107% (inside the 105-110% response band), and moves a
+   soft highlight slowly along the border. The position stays centred, and
+   everything moves with opacity, transform, or background-position only. */
+#island[data-glow="pulse"].flowing .glow-edge {
+  animation: edge-react 6.5s ease-in-out infinite alternate;
 }
 
-@keyframes glow-breathe {
-  from { opacity: 0.93; }
-  to { opacity: 1; }
+@keyframes edge-react {
+  from { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0.66; transform: translate(-50%, -50%) scale(1.07); }
 }
 
-#island[data-glow="pulse"].flowing .glow-inner {
-  animation: glow-breathe-inner 5.4s ease-in-out infinite alternate;
+#island[data-glow="pulse"].flowing .glow-sweep {
+  opacity: 0.34;
+  animation: edge-travel 12s ease-in-out infinite alternate;
 }
 
-@keyframes glow-breathe-inner {
-  from { transform: scale(1); }
-  to { transform: scale(1.06); }
+@keyframes edge-travel {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
 }
 
 /* Colour is information, movement is decoration. */
 @media (prefers-reduced-motion: reduce) {
-  #island[data-glow="pulse"].flowing .notch-glow,
-  #island[data-glow="pulse"].flowing .glow-inner {
+  #island[data-glow="pulse"].flowing .glow-edge,
+  #island[data-glow="pulse"].flowing .glow-sweep {
     animation: none;
-    opacity: 1;
-    transform: none;
+  }
+  #island[data-glow="pulse"].flowing .glow-edge {
+    opacity: 0.62;
+    transform: translate(-50%, -50%);
+  }
+  #island[data-glow="pulse"].flowing .glow-sweep {
+    opacity: 0.2;
   }
 }
 

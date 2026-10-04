@@ -86,21 +86,28 @@ const run = () => {
   const r = glow.getBoundingClientRect();
   const pw = island.getBoundingClientRect();
   check(
-    Math.round(r.width) === 460 && Math.round(r.height) === 210,
-    "glow box is a fixed 460x210",
+    Math.round(r.width) === 400 && Math.round(r.height) === 180,
+    "glow box is a fixed 400x180",
     `got ${Math.round(r.width)}x${Math.round(r.height)}`,
   );
   const reach = (r.width - pw.width) / 2;
   check(
-    reach <= 100,
-    "cannot reach past 100px from the pill, so never a screen edge",
+    reach <= 65,
+    "cannot reach far from the pill, so never a screen edge",
     `reach is ${reach.toFixed(0)}px`,
   );
 
-  // Three layers, in order, all absolutely placed and non-interactive.
+  // Four lighting layers, in stacking order, all absolutely placed and
+  // non-interactive. The DOM should contain only light; none of these may add
+  // controls, icons, text, or artwork.
   const layers = [...glow.querySelectorAll<HTMLElement>("i")];
-  check(layers.length === 3, "three glow layers", `got ${layers.length}`);
+  check(layers.length === 4, "four glow layers", `got ${layers.length}`);
   check(
+    layers.map((layer) => layer.className).join(",") ===
+      "glow-halo,glow-sheen,glow-edge,glow-sweep",
+    "lighting layers stay in back-to-front order",
+    `got ${layers.map((layer) => layer.className).join(",")}`,
+  );  check(
     layers.every((l) => getComputedStyle(l).position === "absolute"),
     "every layer is absolutely positioned",
   );
