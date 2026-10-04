@@ -133,7 +133,15 @@ async fn handle(app: AppHandle, mut pipe: NamedPipeServer) {
             && event == "PreToolUse");
 
     if !waits {
-        log::line(format!("hook {event}"));
+        // The agent rides along so the log says which harness is actually
+        // talking: every fire-and-forget event used to log the bare event
+        // name, and a silent Antigravity was indistinguishable from a chatty
+        // Claude Code.
+        let agent = payload
+            .get("agent")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        log::line(format!("hook {event} agent={agent}"));
         let _ = app.emit_to(WINDOW_LABEL, "hook", payload);
         let _ = pipe.disconnect();
         return;
