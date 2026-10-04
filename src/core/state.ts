@@ -250,7 +250,13 @@ class AppState {
    * music view so the compact bar can tint itself from the same album without
    * the view ever having been opened.
    */
-  mediaAccent: { base: string; deep: string; light: string } | null = null;
+  mediaAccent: {
+    base: string;
+    deep: string;
+    light: string;
+    glowA: string;
+    glowB: string;
+  } | null = null;
 
   /** Whether an Anthropic key exists in the Credential Manager. The island can
    *  only ask "is it there", never read it. */

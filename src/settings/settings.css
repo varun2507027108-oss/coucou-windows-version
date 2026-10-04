@@ -175,50 +175,67 @@ section > h2 {
   overflow: visible;
   flex: 0 0 auto;
 }
-
-/* The chip's own glow, same shape as the island's. */
-.glow-opt-chip::before {
+/* Two layers, mirroring the island's inner and mid. A third would need a real
+   child element — a chip has only ::before and ::after — and at 34x15px the
+   faint outer layer is below the threshold of being visible anyway. What matters
+   is that the swatch shows the same *shape* of effect: tight and bright at the
+   rounded edges, wide and faint around them. */
+.glow-opt-chip::before,
+.glow-opt-chip::after {
   content: "";
   position: absolute;
-  inset: -7px;
   border-radius: 9px;
   opacity: 0;
   pointer-events: none;
   --sample: #e8a05a;
-  --sample-edge: #c88040;
+  --sample-b: #7d6a58;
+}
+
+.glow-opt-chip::before {
+  inset: -9px;
+}
+
+.glow-opt-chip::after {
+  inset: -4px;
+  border-radius: 6px;
 }
 
 .glow-opt-chip[data-glow="corner"]::before,
 .glow-opt-chip[data-glow="wide"]::before,
-.glow-opt-chip[data-glow="pulse"]::before {
+.glow-opt-chip[data-glow="pulse"]::before,
+.glow-opt-chip[data-glow="corner"]::after,
+.glow-opt-chip[data-glow="wide"]::after,
+.glow-opt-chip[data-glow="pulse"]::after {
   background:
-    radial-gradient(64% 140% at 0% 100%, var(--sample) 0%, transparent 58%),
-    radial-gradient(64% 140% at 100% 100%, var(--sample) 0%, transparent 58%),
-    linear-gradient(to top, var(--sample-edge) 0%, transparent 40%);
+    radial-gradient(60% 150% at 36% 58%, var(--sample) 0%, transparent 62%),
+    radial-gradient(44% 128% at 78% 66%, var(--sample-b) 0%, transparent 62%);
 }
 
-.glow-opt-chip[data-glow="corner"]::before {
-  filter: blur(5px);
-  opacity: 1;
-}
+.glow-opt-chip[data-glow="corner"]::before { filter: blur(6px); opacity: 1; }
+.glow-opt-chip[data-glow="corner"]::after { filter: blur(3px); opacity: 0.9; }
 
-.glow-opt-chip[data-glow="wide"]::before {
-  filter: blur(8px);
-  opacity: 0.92;
-}
+.glow-opt-chip[data-glow="wide"]::before { filter: blur(9px); opacity: 1; }
+.glow-opt-chip[data-glow="wide"]::after { filter: blur(4px); opacity: 0.75; }
 
 .glow-opt-chip[data-glow="pulse"]::before {
   filter: blur(6px);
   opacity: 1;
-  animation: glow-breathe 5.2s ease-in-out infinite alternate;
+  animation: glow-breathe 5.4s ease-in-out infinite alternate;
+}
+.glow-opt-chip[data-glow="pulse"]::after {
+  filter: blur(3px);
+  opacity: 0.9;
+  animation: glow-breathe-inner 5.4s ease-in-out infinite alternate;
 }
 
 /* The unselected chips stay dim so the chosen one reads at a glance. */
-.glow-opt:not(.on) .glow-opt-chip::before {
-  opacity: 0.3;
+.glow-opt:not(.on) .glow-opt-chip::before,
+.glow-opt:not(.on) .glow-opt-chip::after {
+  opacity: 0.28;
 }
 
-.glow-opt-chip[data-glow="off"]::before {
+.glow-opt-chip[data-glow="off"]::before,
+.glow-opt-chip[data-glow="off"]::after {
   display: none;
 }
 
@@ -229,9 +246,10 @@ section > h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glow-opt-chip[data-glow="pulse"]::before {
+  .glow-opt-chip[data-glow="pulse"]::before,
+  .glow-opt-chip[data-glow="pulse"]::after {
     animation: none;
-    opacity: 0.85;
+    opacity: 0.95;
   }
 }
 

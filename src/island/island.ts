@@ -132,6 +132,7 @@ export class Island {
   private miniGrid!: HTMLElement;
   private compactTrack!: HTMLElement;
   private compactTrackFill: HTMLElement | null = null;
+  private glowEl!: HTMLElement;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
 
@@ -300,6 +301,13 @@ export class Island {
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
+    // The album glow: three blurred layers in a fixed box, behind everything.
+    // First child so it paints under the canvases and the track text, which is
+    // what keeps the content readable over it.
+    this.glowEl = h("div", { class: "notch-glow", "aria-hidden": "true" },
+      h("i", { class: "glow-inner" }),
+      h("i", { class: "glow-mid" }),
+      h("i", { class: "glow-outer" }));
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
@@ -345,6 +353,7 @@ export class Island {
     this.islandEl = h(
       "div",
       { id: "island" },
+      this.glowEl,
       this.clipEl,
       this.botGlow,
       this.botCanvas,
@@ -393,6 +402,14 @@ export class Island {
   }
 
   launch() {
+    // A restart is not the user asking to see anything. With quiet on, the
+    // greeting is skipped and the island stays down until it is summoned —
+    // coming back from a restart to a full-screen Mochi is precisely the thing
+    // the switch exists to stop.
+    if (State.settings.quietHover) {
+      this.fsm.hide();
+      return;
+    }
     this.fsm.launch();
   }
 
@@ -508,13 +525,35 @@ expand(view: IslandViewName) {
 
   /** Alert from the hook server: open on this view. Pinned alerts never auto-close. */
   alert(view: IslandViewName) {
+    // Quiet means "nothing on my screen unless I ask", and an agent asking for a
+    // permission is not the user asking. Suppressing it is safe rather than
+    // merely quiet: the hook relay exits immediately when the island does not
+    // answer, so the harness falls back to asking in the terminal. That rule is
+    // the reason this is safe — break it and the agent waits for nothing.
+    if (State.settings.quietHover) return;
     this.fsm.pinned = State.isPinned;
     this.fsm.forceHome();
     this.expand(view);
   }
 
   reveal() {
+    if (State.settings.quietHover) return;
     this.fsm.reveal();
+  }
+
+  /**
+   * Puts the island away when quiet is switched on, and only then.
+   *
+   * Without this the switch did nothing you could see: the island was on screen,
+   * you pressed the key, the preference flipped, and the island stayed exactly
+   * where it was. It also has to hide rather than collapse, because collapsing
+   * only reaches the 288x32 compact bar.
+   */
+  private hideIfQuiet() {
+    if (!State.settings.quietHover) return;
+    if (State.mode === "hidden") return;
+    State.isPinned = false;
+    this.fsm.hide();
   }
 
   /**
@@ -1276,10 +1315,18 @@ if (!IS_TAURI) {
     this.wakeStrip.style.pointerEvents = State.settings.quietHover ? "none" : "";
 
     if (accent) {
-      // On the island, not on the strip: custom properties inherit, so the text
-      // picks these up and the glow shares one source of truth.
+      // On the island, not on the layers: custom properties inherit, so one write
+      // reaches the three glow layers and the track text together.
+      //
+      // `--amb-light` is the track's own colour — the progress line wants the
+      // saturated one. `--amb-glow-a/b` are the softened pair, because the same
+      // saturated value spread over a 40px blur turns into neon. Both are
+      // registered as <color> in CSS, which is what lets the 1.4s cross-fade
+      // between one cover's light and the next actually run.
       this.islandEl.style.setProperty("--amb-base", accent.base);
       this.islandEl.style.setProperty("--amb-light", accent.light);
+      this.islandEl.style.setProperty("--amb-glow-a", accent.glowA);
+      this.islandEl.style.setProperty("--amb-glow-b", accent.glowB);
     }
     if (!show || !m) return;
     this.compactTrack.classList.toggle("playing", m.playing);
@@ -1340,6 +1387,11 @@ if (!IS_TAURI) {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    // The point of the switch is that Coucou is not on the screen, so turning it
+    // on has to take the island off the screen. `settings-changed` is the only
+    // signal that arrives for both the hotkey and the settings window, so this is
+    // the one place that can act on it.
+    this.hideIfQuiet();
     State.notify();
   }
 

@@ -99,9 +99,13 @@ session. Anything your browser plays shows up.
   client ID is yours to paste in.
 
 The panel is lit by the album: `src/library/palette.ts` samples the cover and
-tints the whole view in its colours. The collapsed bar carries the track title,
-a progress hairline and a soft glow along its bottom edge — **Settings… → Album
-glow on the bar** picks how it looks (`corner`, `wide`, `pulse`, `off`).
+tints the whole view in its colours. The collapsed bar carries the track title, a
+progress hairline, and soft light in the cover's colours — three layers (a tight
+one at the rounded edges, a wide ambient one, and a very faint outer one) in a
+fixed box, so it reads as the bar emitting light rather than as a coloured band
+across the top of the screen, and fades out well before the screen edges.
+**Settings… → Album glow on the bar** picks how it looks (`Tight`, `Wide`,
+`Breathe`, `Off`). Colours cross-fade over 1.4s when the song changes.
 
 ## Multi-agent review
 

@@ -11,11 +11,25 @@
 // second is kept when the winner's neighbours are genuinely different, which is
 // what gives a two-tone glow instead of a flat wash.
 
-/** Three colours: the glow's core, a supporting tint, and a warm highlight. */
+/**
+ * Colours the UI is tinted with.
+ *
+ * `glowA`/`glowB` exist because the same sampled colour cannot be used for
+ * everything. On a 4px progress line, a fully saturated mean reads as the
+ * record's colour and looks right; the same value spread over a 40px blur
+ * becomes a neon smear that competes with the artwork it is supposed to
+ * complement. So the glow gets its own pair, desaturated toward the colour's
+ * own luminance — which keeps the brightness the opacity maths assumes while
+ * taking the edge off the saturation.
+ */
 export interface Palette {
   base: string;
   deep: string;
   light: string;
+  /** Primary glow colour: softened `light`. */
+  glowA: string;
+  /** Secondary glow colour: softened `base`, for the second radial. */
+  glowB: string;
 }
 
 const SAMPLE = 24;
@@ -98,7 +112,7 @@ export function extractPalette(img: HTMLImageElement): Palette | null {
     // exactly what a cover with a black band produces. So it gets a floor.
     const deep = second ? mean(second) : shade(base, -0.42);
     const light = lift(second ? shade(base, 0.34) : shade(base, 0.46), 0.42);
-    return { base, deep, light };
+    return { base, deep, light, glowA: soften(light, 0.32), glowB: soften(base, 0.24) };
   } catch {
     // A tainted canvas throws rather than returning null.
     return null;
@@ -147,6 +161,23 @@ function lift(colour: string, floor: number): string {
     Math.min(255, Math.round(ch[1] * k)),
     Math.min(255, Math.round(ch[2] * k)),
   );
+}
+
+/**
+ * Desaturates an `rgb(r g b)` string toward its own luminance.
+ *
+ * Mixing every channel toward the same luma rather than toward white: white
+ * would raise the brightness as well as flatten the colour, and the glow layers
+ * set their own opacity, so a brighter input would silently make the effect
+ * stronger as well as softer.
+ */
+function soften(colour: string, amount: number): string {
+  const nums = colour.match(/[\d.]+/g);
+  if (!nums || nums.length < 3) return colour;
+  const ch = nums.slice(0, 3).map(Number);
+  const luma = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  const out = ch.map((c) => Math.round(c + (luma - c) * amount));
+  return rgb(out[0], out[1], out[2]);
 }
 
 // ── Loading from a URL ───────────────────────────────────────────────────────

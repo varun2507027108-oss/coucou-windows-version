@@ -142,6 +142,23 @@ export class IslandStateMachine {
     this.transition("home");
   }
 
+  /**
+   * Straight to hidden from anywhere, immediately.
+   *
+   * For the quiet switch. Every other route out of an open island ends at
+   * `petit`, which is still a visible 288x32 bar — fine for "I clicked away",
+   * useless for "get Coucou off my screen". This is the only transition that
+   * skips it, and nothing else calls it.
+   */
+  hide() {
+    if (this.state === "hidden") return;
+    // An alert holds the island open through `pinned`; clearing it is the whole
+    // point, or a pending permission request would drag the island straight back.
+    this.pinned = false;
+    this.cancelTimers();
+    this.transition("hidden");
+  }
+
   /// Explicit close (OK button, Escape, an alert being answered).
   forcePetit() {
     this.cancelTimers();

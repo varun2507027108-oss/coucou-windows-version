@@ -659,9 +659,9 @@ function librarySection(): HTMLElement {
   // label: the difference between "tight" and "wide" is not something a word
   // conveys, and the choice only means anything against a real album colour.
   const GLOW_STYLES: Array<[string, string, string]> = [
-    ["corner", "Corner", "A soft line along the bottom edge, pooling at the two rounded corners."],
-    ["wide", "Wide", "The same light, larger and softer, spreading further out."],
-    ["pulse", "Pulse", "The same light, breathing while the track plays."],
+    ["corner", "Tight", "Close in, with more colour at the rounded edges."],
+    ["wide", "Wide", "Softer and further out, like light in a room."],
+    ["pulse", "Breathe", "The same light, pulsing very gently while the track plays."],
     ["off", "Off", "No album colour on the bar at all."],
   ];
   const glowButtons = GLOW_STYLES.map(([id, label, hint]) =>

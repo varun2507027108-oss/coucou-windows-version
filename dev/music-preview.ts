@@ -55,11 +55,12 @@ void loadPalette(track.art!).then((p) => {
   view.sync();
   // Same for the compact bar and its ring, which the island tints in
   // syncCompactTrack() by writing the palette onto #island itself.
-  const island = document.getElementById("island");
+const island = document.getElementById("island");
   if (p && island) {
     island.style.setProperty("--amb-base", p.base);
-    island.style.setProperty("--amb-deep", p.deep);
     island.style.setProperty("--amb-light", p.light);
+    island.style.setProperty("--amb-glow-a", p.glowA);
+    island.style.setProperty("--amb-glow-b", p.glowB);
   }
   const strip = document.getElementById("compact-track");
   const fill = strip?.querySelector<HTMLElement>(".compact-track-fill");

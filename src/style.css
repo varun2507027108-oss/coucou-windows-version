@@ -96,99 +96,173 @@ body {
 }
 
 /* ── Album glow around the compact bar ───────────────────────────────────── */
-/* Corner-only, and only while the island is collapsed.
-   The straight left and right edges sit flush against the edge of the screen,
-   so a glow there reads as a lit-up screen border rather than as Mochi's bar.
-   The only curved parts of the collapsed pill are its two bottom corners, so
-   those are the only parts that glow.
+/* Light the notch emits, driven by the cover. Collapsed bar only — the expanded
+   panel already carries the album colour through the music view's own ambience,
+   and the pill's straight edges sit flush against the edge of the screen, so
+   lighting those reads as a lit screen border rather than as Mochi's bar.
 
-   There is no ring and no hard edge anywhere in here. Each variant is a blurred
-   radial gradient sitting under the corner, which is as soft as this can get
-   without becoming a wash over the whole bar.
+   Three layers, cheapest-looking first. One box-shadow cannot do this: it either
+   hugs the edge tightly enough to look like a neon outline, or spreads far enough
+   to be a wash, and there is no blur radius in between that does both. Separate
+   blurred elements give each layer its own falloff so they read as one light
+   rather than as three rings.
 
-   --amb-base / --amb-light are written onto #island from the sampled cover by
-   syncCompactTrack; --glow-col is the softened album colour they mix into.
-   The style is chosen by `data-glow` on #island, from Settings. */
-#island::before {
-  content: "";
+     .glow-inner  small blur, strongest  — definition at the rounded edges
+     .glow-mid    wide blur, medium       — atmosphere around the pill
+     .glow-outer  largest blur, faintest  — the room the light is in, and gone
+                                             well before the screen edges
+
+   The primary radial is biased towards the content side (34% across, where the
+   track text and Mochi sit, and where the artwork sits in the music view), so
+   the light reads as coming from the thing showing the song. A second, smaller
+   radial in the secondary colour keeps a two-colour cover from flattening into
+   one tint.
+
+   Containment is structural, not hoped for. `.notch-glow` is a fixed 460x210 box
+   centred on a 288px pill, so the effect cannot reach past ~86px from the notch
+   on a 1536px screen. Its own radial mask fades to transparent well inside that
+   box, so even a 34px blur is never clipped into a visible straight edge — the
+   mask guarantees there is no full-width band, whatever the blur is set to.
+
+   --amb-glow-a / --amb-glow-b come from the sampled cover via palette.ts, already
+   desaturated toward their own luminance so a vivid cover does not become neon.
+   They are registered as <color> below so they interpolate: a song change
+   cross-fades the light over 1.4s instead of snapping to the new cover. */
+
+/* Registered so a colour change animates. An unregistered custom property is a
+   token stream, not a value, so `transition` on it does nothing and the light
+   would jump on every track. */
+@property --amb-glow-a {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7f9ec2;
+}
+@property --amb-glow-b {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #3a4a63;
+}
+
+#island {
+  --amb-glow-a: #7f9ec2;
+  --amb-glow-b: #3a4a63;
+  /* The cross-fade between one cover's light and the next. */
+  transition: --amb-glow-a 1.4s ease, --amb-glow-b 1.4s ease;
+}
+
+.notch-glow {
   position: absolute;
-  /* Bleeds past the pill so the light has somewhere to go. */
-  inset: -12px;
-  border-radius: 22px;
+  left: 50%;
+  top: 50%;
+  width: 460px;
+  height: 210px;
+  transform: translate(-50%, -50%);
   pointer-events: none;
+  overflow: hidden;
   z-index: 0;
   opacity: 0;
-  /* Stronger than it was: the first pass at this was too faint to notice on a
-     real desktop, and a glow you cannot see is not a glow. */
-  --glow-col: color-mix(in srgb, var(--amb-light) 46%, transparent);
-  --glow-edge: color-mix(in srgb, var(--amb-light) 40%, transparent);
+  /* Fades out long before the box edge. This is what guarantees containment:
+     the outer layer can be blurred as hard as it likes and still be zero well
+     inside 460px. */
+  mask-image: radial-gradient(58% 64% at 50% 52%, #000 0%, rgba(0, 0, 0, 0.5) 54%, transparent 80%);
   transition: opacity 0.6s ease;
 }
 
-/* Three layers: a wash along the whole bottom edge, plus a stronger pool at each
-   rounded corner to give the curve its shape.
+.notch-glow > i {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 50%;
+  pointer-events: none;
+}
 
-   The bottom edge is the one straight edge that gets light. It is the only part
-   of the bar that does not touch the edge of the screen, so lighting it reads as
-   the bar being lit rather than as a lit screen border. The top and the two
-   sides stay dark; the vertical falloff below is short enough that it dies out
-   before it reaches the straight part of the sides. */
-#island[data-glow="corner"]::before,
-#island[data-glow="wide"]::before,
-#island[data-glow="pulse"]::before {
+/* Layer 1 — inner. Tight, so the rounded corners get an edge to read against
+   without becoming an outline: nothing here is a border, it is light sitting
+   just outside the pill. The primary radial is biased left towards the content
+   but sized to reach the far corner too, so both rounded ends glow and the
+   effect still reads as coming from the thing showing the song. */
+.glow-inner {
+  inset: -10px;
   background:
-    radial-gradient(64% 140% at 0% 100%, var(--glow-col) 0%, transparent 58%),
-    radial-gradient(64% 140% at 100% 100%, var(--glow-col) 0%, transparent 58%),
-    linear-gradient(to top, var(--glow-edge) 0%, transparent 40%);
+    radial-gradient(64% 132% at 36% 58%, var(--amb-glow-a) 0%, transparent 64%),
+    radial-gradient(44% 116% at 78% 66%, var(--amb-glow-b) 0%, transparent 64%);
+  filter: blur(8px);
+  opacity: 0.34;
 }
 
-/* Tight and calm. */
-#island[data-glow="corner"]::before {
-  filter: blur(11px);
-  opacity: 0;
+/* Layer 2 — medium ambient. Wider and much fainter; this is the layer that
+   makes the bar look lit rather than outlined. */
+.glow-mid {
+  inset: -26px;
+  background:
+    radial-gradient(58% 150% at 40% 58%, var(--amb-glow-a) 0%, transparent 58%),
+    radial-gradient(44% 128% at 78% 68%, var(--amb-glow-b) 0%, transparent 60%);
+  filter: blur(19px);
+  opacity: 0.13;
 }
 
-#island[data-glow="corner"].flowing::before {
+/* Layer 3 — outer. Barely there, and gone long before the screen edges. */
+.glow-outer {
+  inset: -44px;
+  background: radial-gradient(62% 168% at 44% 58%, var(--amb-glow-a) 0%, transparent 56%);
+  filter: blur(34px);
+  opacity: 0.05;
+}
+
+/* On by default; the styles below adjust the spread. "off" matches no rule, so
+   the wrapper stays at opacity 0. */
+#island[data-glow="corner"].flowing .notch-glow,
+#island[data-glow="wide"].flowing .notch-glow,
+#island[data-glow="pulse"].flowing .notch-glow {
   opacity: 1;
 }
 
-/* Wider and softer: the light spreads further along the curve and further out,
-   without reaching the middle of the edge. */
-#island[data-glow="wide"]::before {
-  filter: blur(18px);
-  opacity: 0;
-  --glow-col: color-mix(in srgb, var(--amb-light) 42%, var(--amb-base) 16%);
-  --glow-edge: color-mix(in srgb, var(--amb-light) 38%, transparent);
+/* Wider and softer: same three layers, more reach and less of an edge. */
+#island[data-glow="wide"] .glow-inner {
+  inset: -14px;
+  filter: blur(11px);
+  opacity: 0.26;
+}
+#island[data-glow="wide"] .glow-mid {
+  inset: -34px;
+  filter: blur(26px);
+  opacity: 0.15;
+}
+#island[data-glow="wide"] .glow-outer {
+  inset: -56px;
+  filter: blur(44px);
+  opacity: 0.06;
 }
 
-#island[data-glow="wide"].flowing::before {
-  opacity: 0.92;
+/* Breathing. Spec is 100% → 105-110%: it should be something you notice without
+   noticing, so this moves opacity and scale a hair and nothing else. Slower than
+   a beat, which is what stops it reading as a pulse meter. Compositor-only
+   properties, so it costs no layout. */
+#island[data-glow="pulse"].flowing .notch-glow {
+  animation: glow-breathe 5.4s ease-in-out infinite alternate;
 }
-
-/* The same corner light, breathing. Slower than a beat, so it reads as alive
-   rather than as a pulse meter. */
-#island[data-glow="pulse"]::before {
-  filter: blur(12px);
-  opacity: 0;
-}
-
-#island[data-glow="pulse"].flowing::before {
-  animation: glow-breathe 5.2s ease-in-out infinite alternate;
-}
-
-/* "off" needs no rule: no matching selector means the pseudo-element stays at
-   opacity 0, which is the default above. */
 
 @keyframes glow-breathe {
-  from { opacity: 0.5; }
+  from { opacity: 0.93; }
   to { opacity: 1; }
+}
+
+#island[data-glow="pulse"].flowing .glow-inner {
+  animation: glow-breathe-inner 5.4s ease-in-out infinite alternate;
+}
+
+@keyframes glow-breathe-inner {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
 }
 
 /* Colour is information, movement is decoration. */
 @media (prefers-reduced-motion: reduce) {
-  #island[data-glow="pulse"].flowing::before {
+  #island[data-glow="pulse"].flowing .notch-glow,
+  #island[data-glow="pulse"].flowing .glow-inner {
     animation: none;
-    opacity: 0.8;
+    opacity: 1;
+    transform: none;
   }
 }
 

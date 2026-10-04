@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Dev harness: proves the album glow cross-fades between covers instead of
+     snapping. A registered @property colour interpolates, so the computed value
+     mid-transition is neither the old colour nor the new one; an unregistered
+     custom property is a token stream and jumps. Results go in #out so
+     `brave --headless --dump-dom` can read them. Not part of the app bundle. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>glow crossfade check</title>
+    <link rel="stylesheet" href="../src/style.css" />
+    <style>
+      body { margin: 0; background: #222; color: #eee; font: 12px monospace; }
+      #stage { position: relative; width: 700px; height: 260px; }
+      #island {
+        position: absolute; left: 50%; top: 120px; transform: translateX(-50%);
+        width: 288px; height: 32px;
+      }
+      #out { padding: 8px; white-space: pre; }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="island" class="flowing" data-glow="corner">
+        <div class="notch-glow"><i class="glow-inner"></i><i class="glow-mid"></i><i class="glow-outer"></i></div>
+      </div>
+    </div>
+    <div id="out">running</div>
+    <script type="module" src="./glow-crossfade-check.ts"></script>
+  </body>
+</html>

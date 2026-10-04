@@ -7,8 +7,8 @@ import { loadPalette } from "../src/library/palette";
 const COVER = "./cover-sample.png";
 
 const STYLES: Array<[string, string]> = [
-  ["corner", "A soft line along the bottom edge, pooling at the two rounded corners."],
-  ["wide", "The same light, larger and softer, spreading further out."],
+  ["corner", "Tight: definition at the rounded edges, close in."],
+  ["wide", "Wider and softer, reaching further out."],
   ["pulse", "The same light, breathing while the track plays."],
   ["off", "No album colour on the bar at all."],
 ];
@@ -21,10 +21,20 @@ const build = (style: string, desc: string) => {
   island.className = "flowing";
   island.dataset.glow = style;
 
+  // Same three layers, same order, as Island's constructor.
+  const glow = document.createElement("div");
+  glow.className = "notch-glow";
+  for (const cls of ["glow-inner", "glow-mid", "glow-outer"]) {
+    const i = document.createElement("i");
+    i.className = cls;
+    glow.append(i);
+  }
+  island.append(glow);
+
   const mochi = document.createElement("div");
   Object.assign(mochi.style, {
     position: "absolute", left: "12px", top: "5px", width: "22px", height: "22px",
-    borderRadius: "11px", background: "linear-gradient(180deg,#fbfbfc,#e7e9ec)",
+    borderRadius: "11px", background: "linear-gradient(180deg,#fbfbfc,#e7e9ec)", zIndex: "2",
   });
   island.append(mochi);
 
@@ -51,17 +61,7 @@ const build = (style: string, desc: string) => {
   const d = document.createElement("div");
   d.className = "desc";
   d.textContent = desc;
-  // The same picker the settings window uses, so the control is judged too.
-  const picker = document.createElement("div");
-  picker.className = "picker";
-  for (const [id] of STYLES) {
-    const b = document.createElement("button");
-    b.className = `glow-opt${id === style ? " on" : ""}`;
-    b.dataset.glow = id;
-    b.innerHTML = `<span class="glow-opt-chip" data-glow="${id}"></span>${id}`;
-    picker.append(b);
-  }
-  cell.append(name, desk, d, picker);
+  cell.append(name, desk, d);
   grid.append(cell);
   return island;
 };
@@ -73,5 +73,7 @@ void loadPalette(COVER).then((p) => {
   for (const el of islands) {
     el.style.setProperty("--amb-base", p.base);
     el.style.setProperty("--amb-light", p.light);
+    el.style.setProperty("--amb-glow-a", p.glowA);
+    el.style.setProperty("--amb-glow-b", p.glowB);
   }
 });
